@@ -7,8 +7,9 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   token: text("token").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  passwordSalt: text("password_salt").notNull(),
+  passwordHash: text("password_hash"),
+  passwordSalt: text("password_salt"),
+  supabaseId: text("supabase_id").unique(),
   mode: text("mode").default("decoration"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -1,6 +1,6 @@
-import { useRegisterUser, useLoginUser } from "@workspace/api-client-react";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,84 +12,67 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useUser } from "@/context/UserContext";
-import * as Haptics from "expo-haptics";
 
-type Mode = "welcome" | "register" | "login";
+type Mode = "welcome" | "email" | "sent";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
 
 export default function Onboarding() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login } = useUser();
   const [mode, setMode] = useState<Mode>("welcome");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const registerMutation = useRegisterUser();
-  const loginMutation = useLoginUser();
-
-  const isLoading = registerMutation.isPending || loginMutation.isPending;
-
-  const handleGetStarted = async () => {
+  const handleSendMagicLink = async () => {
     setError("");
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setError("Please fill in all fields");
+    if (!email.trim() || !email.includes("@")) {
+      setError("Please enter a valid email address");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
+
+    setLoading(true);
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const data = await registerMutation.mutateAsync({
-        data: { name: name.trim(), email: email.trim(), password },
+      const redirectTo =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : `mobile:///`;
+
+      const res = await fetch(`${API_BASE}/api/auth/magic-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), redirectTo }),
       });
-      await login(data.userId, data.name, data.email, data.token);
-    } catch (err: unknown) {
-      const apiErr = err as { status?: number };
-      if (apiErr?.status === 409) {
-        setError("Email already registered. Sign in instead.");
-      } else {
-        setError("Something went wrong. Please try again.");
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to send link. Please try again.");
+        return;
       }
-    }
-  };
 
-  const handleSignIn = async () => {
-    setError("");
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter your email and password");
-      return;
-    }
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const data = await loginMutation.mutateAsync({
-        data: { email: email.trim(), password },
-      });
-      await login(data.userId, data.name, data.email, data.token);
+      setMode("sent");
     } catch {
-      setError("Invalid email or password.");
+      setError("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const s = styles(colors);
 
-  const LogoHeader = () => (
-    <View style={s.heroSection}>
-      <View style={s.logoRow}>
-        <View style={s.frameIcon}>
-          <View style={s.frameTopLeft} />
-          <View style={s.frameBottomRight} />
-          <View style={s.framePlus}>
-            <Text style={s.framePlusText}>+</Text>
-          </View>
+  const Logo = () => (
+    <View style={s.logoRow}>
+      <View style={s.frameIcon}>
+        <View style={s.frameTopLeft} />
+        <View style={s.frameBottomRight} />
+        <View style={s.framePlus}>
+          <Text style={s.framePlusText}>+</Text>
         </View>
-        <Text style={s.appName}>StyleSwipe</Text>
       </View>
-      <Text style={s.tagline}>Discover what you love.</Text>
+      <Text style={s.appName}>StyleSwipe</Text>
     </View>
   );
 
@@ -112,112 +95,102 @@ export default function Onboarding() {
         >
           {mode === "welcome" && (
             <>
-              <LogoHeader />
+              <View style={s.heroSection}>
+                <Logo />
+                <Text style={s.tagline}>Discover what you love.</Text>
+              </View>
               <View style={s.spacer} />
-              <View style={s.welcomeActions}>
-                <Pressable style={s.createBtn} onPress={() => setMode("register")}>
+              <View style={s.actions}>
+                <Pressable style={s.createBtn} onPress={() => setMode("email")}>
                   <Text style={s.createBtnText}>Create Account</Text>
                 </Pressable>
-                <Pressable style={s.signInBtn} onPress={() => setMode("login")}>
+                <Pressable style={s.signInBtn} onPress={() => setMode("email")}>
                   <Text style={s.signInBtnText}>Sign In</Text>
                 </Pressable>
               </View>
             </>
           )}
 
-          {(mode === "register" || mode === "login") && (
+          {mode === "email" && (
             <>
-              <LogoHeader />
+              <View style={s.heroSection}>
+                <Logo />
+                <Text style={s.tagline}>Discover what you love.</Text>
+              </View>
               <View style={s.form}>
-                {mode === "register" && (
-                  <View style={s.inputGroup}>
-                    <Text style={[s.label, { color: colors.mutedForeground }]}>Your Name</Text>
-                    <TextInput
-                      style={[
-                        s.input,
-                        { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
-                      ]}
-                      value={name}
-                      onChangeText={setName}
-                      placeholder="e.g. Alex Rivera"
-                      placeholderTextColor={colors.mutedForeground}
-                      autoCapitalize="words"
-                      returnKeyType="next"
-                    />
-                  </View>
-                )}
-
-                <View style={s.inputGroup}>
-                  <Text style={[s.label, { color: colors.mutedForeground }]}>Email</Text>
-                  <TextInput
-                    style={[
-                      s.input,
-                      { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
-                    ]}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="you@example.com"
-                    placeholderTextColor={colors.mutedForeground}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    returnKeyType="next"
-                  />
-                </View>
-
-                <View style={s.inputGroup}>
-                  <Text style={[s.label, { color: colors.mutedForeground }]}>Password</Text>
-                  <TextInput
-                    style={[
-                      s.input,
-                      { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
-                    ]}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Min. 6 characters"
-                    placeholderTextColor={colors.mutedForeground}
-                    secureTextEntry
-                    returnKeyType="done"
-                    onSubmitEditing={mode === "register" ? handleGetStarted : handleSignIn}
-                  />
-                </View>
-
+                <Text style={s.formTitle}>Enter your email</Text>
+                <Text style={s.formSubtitle}>
+                  We'll send you a magic link — no password needed.
+                </Text>
+                <TextInput
+                  style={[
+                    s.input,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: error ? colors.destructive : "#D0D0D0",
+                      color: colors.foreground,
+                    },
+                  ]}
+                  value={email}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    setError("");
+                  }}
+                  placeholder="you@example.com"
+                  placeholderTextColor="#9E9E9E"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                  returnKeyType="send"
+                  onSubmitEditing={handleSendMagicLink}
+                />
                 {error ? (
                   <Text style={[s.errorText, { color: colors.destructive }]}>{error}</Text>
                 ) : null}
-
                 <Pressable
-                  style={[s.createBtn, { opacity: isLoading ? 0.6 : 1 }]}
-                  onPress={mode === "register" ? handleGetStarted : handleSignIn}
-                  disabled={isLoading}
+                  style={[s.createBtn, { opacity: loading ? 0.6 : 1 }]}
+                  onPress={handleSendMagicLink}
+                  disabled={loading}
                 >
-                  <Text style={s.createBtnText}>
-                    {isLoading ? "Loading..." : mode === "register" ? "Get Started" : "Sign In"}
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator color="#111111" />
+                  ) : (
+                    <Text style={s.createBtnText}>Send Magic Link</Text>
+                  )}
                 </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    setMode(mode === "register" ? "login" : "register");
-                    setError("");
-                    setPassword("");
-                  }}
-                >
-                  <Text style={[s.switchText, { color: colors.mutedForeground }]}>
-                    {mode === "register"
-                      ? "Already have an account? Sign in"
-                      : "New here? Create an account"}
-                  </Text>
-                </Pressable>
-
                 <Pressable
                   onPress={() => {
                     setMode("welcome");
                     setError("");
-                    setPassword("");
                   }}
                 >
-                  <Text style={[s.backText, { color: colors.mutedForeground }]}>Back</Text>
+                  <Text style={s.backText}>← Back</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {mode === "sent" && (
+            <>
+              <View style={s.heroSection}>
+                <Logo />
+              </View>
+              <View style={s.sentSection}>
+                <Text style={s.sentIcon}>📬</Text>
+                <Text style={s.sentTitle}>Check your email</Text>
+                <Text style={s.sentSubtitle}>
+                  We sent a magic link to{"\n"}
+                  <Text style={{ fontFamily: "Inter_600SemiBold" }}>{email}</Text>
+                  {"\n\n"}Tap the link in your email to sign in.
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setMode("email");
+                    setError("");
+                  }}
+                >
+                  <Text style={s.backText}>Use a different email</Text>
                 </Pressable>
               </View>
             </>
@@ -239,13 +212,11 @@ function styles(colors: ReturnType<typeof useColors>) {
       paddingBottom: 20,
       gap: 16,
     },
-
     logoRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
     },
-
     frameIcon: {
       width: 52,
       height: 52,
@@ -283,19 +254,17 @@ function styles(colors: ReturnType<typeof useColors>) {
     framePlusText: {
       fontSize: 20,
       color: "#111111",
-      fontFamily: "Inter_300Light",
+      fontFamily: "Inter_400Regular",
       lineHeight: 20,
       textAlign: "center",
       includeFontPadding: false,
     },
-
     appName: {
       fontSize: 38,
       fontFamily: "Inter_700Bold",
       color: "#111111",
       letterSpacing: -1,
     },
-
     tagline: {
       fontSize: 15,
       fontFamily: "Inter_400Regular",
@@ -306,8 +275,7 @@ function styles(colors: ReturnType<typeof useColors>) {
 
     spacer: { flex: 1, minHeight: 120 },
 
-    welcomeActions: { gap: 12 },
-
+    actions: { gap: 12 },
     createBtn: {
       height: 56,
       borderRadius: 14,
@@ -336,28 +304,59 @@ function styles(colors: ReturnType<typeof useColors>) {
     },
 
     form: { gap: 16 },
-    inputGroup: { gap: 6 },
-    label: { fontSize: 13, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
+    formTitle: {
+      fontSize: 22,
+      fontFamily: "Inter_700Bold",
+      color: "#111111",
+      textAlign: "center",
+    },
+    formSubtitle: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: "#666666",
+      textAlign: "center",
+      lineHeight: 20,
+    },
     input: {
-      height: 52,
+      height: 54,
       borderRadius: 14,
-      borderWidth: 1,
+      borderWidth: 1.5,
       paddingHorizontal: 16,
       fontSize: 16,
       fontFamily: "Inter_400Regular",
     },
-    errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-    switchText: {
-      fontSize: 15,
+    errorText: {
+      fontSize: 13,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
-      marginTop: 4,
     },
     backText: {
       fontSize: 14,
       fontFamily: "Inter_400Regular",
+      color: "#888888",
       textAlign: "center",
-      marginTop: -4,
+      marginTop: 4,
+    },
+
+    sentSection: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 16,
+      paddingBottom: 80,
+    },
+    sentIcon: { fontSize: 52 },
+    sentTitle: {
+      fontSize: 24,
+      fontFamily: "Inter_700Bold",
+      color: "#111111",
+    },
+    sentSubtitle: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: "#666666",
+      textAlign: "center",
+      lineHeight: 24,
     },
   });
 }

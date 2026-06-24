@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { roomAssignmentsTable, productSwipesTable, productsTable } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import {
+  roomAssignmentsTable,
+  productSwipesTable,
+  productsTable,
+  sessionsTable,
+} from "@workspace/db/schema";
+import { eq, and, or } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -16,15 +21,43 @@ export const PRESET_ROOMS = [
   "Other",
 ];
 
-// GET /rooms — get all room assignments for the current user (grouped by room)
+// GET /rooms?sessionId=N — get room assignments for current user (+ partner if sessionId provided)
 router.get("/rooms", requireAuth, async (req, res) => {
   const userId = req.userId!;
+  const sessionId = req.query.sessionId ? Number(req.query.sessionId) : undefined;
+
+  let partnerId: number | undefined;
+
+  if (sessionId) {
+    const [session] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, sessionId))
+      .limit(1);
+
+    if (session && session.status === "active") {
+      if (session.createdBy === userId) {
+        partnerId = session.partnerId ?? undefined;
+      } else if (session.partnerId === userId) {
+        partnerId = session.createdBy;
+      }
+    }
+  }
+
+  // Build where clause: user's assignments, optionally include partner's
+  const whereClause = partnerId
+    ? or(
+        eq(roomAssignmentsTable.userId, userId),
+        eq(roomAssignmentsTable.userId, partnerId)
+      )
+    : eq(roomAssignmentsTable.userId, userId);
 
   const rows = await db
     .select({
       id: roomAssignmentsTable.id,
       room: roomAssignmentsTable.room,
       productId: roomAssignmentsTable.productId,
+      ownerId: roomAssignmentsTable.userId,
       product: {
         id: productsTable.id,
         url: productsTable.url,
@@ -38,20 +71,28 @@ router.get("/rooms", requireAuth, async (req, res) => {
     })
     .from(roomAssignmentsTable)
     .innerJoin(productsTable, eq(roomAssignmentsTable.productId, productsTable.id))
-    .where(eq(roomAssignmentsTable.userId, userId));
+    .where(whereClause);
 
-  // Group by room
-  const grouped: Record<string, { id: number; product: typeof rows[0]["product"] }[]> = {};
+  // Group by room; annotate each item with owner ("me" | "partner")
+  const grouped: Record<
+    string,
+    { id: number; product: (typeof rows)[0]["product"]; owner: "me" | "partner" }[]
+  > = {};
+
   for (const row of rows) {
     if (!grouped[row.room]) grouped[row.room] = [];
-    grouped[row.room].push({ id: row.id, product: row.product });
+    grouped[row.room].push({
+      id: row.id,
+      product: row.product,
+      owner: row.ownerId === userId ? "me" : "partner",
+    });
   }
 
   const rooms = Object.entries(grouped).map(([name, items]) => ({ name, items }));
   res.json({ rooms, presetRooms: PRESET_ROOMS });
 });
 
-// POST /rooms/assign — assign a product to a room
+// POST /rooms/assign — assign a product to a room (custom room names accepted)
 router.post("/rooms/assign", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const { productId, room } = req.body as { productId?: number; room?: string };
@@ -79,7 +120,7 @@ router.post("/rooms/assign", requireAuth, async (req, res) => {
     return;
   }
 
-  // Check for existing assignment
+  // Idempotent: return existing if already assigned
   const existing = await db
     .select()
     .from(roomAssignmentsTable)

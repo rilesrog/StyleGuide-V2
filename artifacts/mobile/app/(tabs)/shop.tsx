@@ -192,6 +192,8 @@ export default function ShopScreen() {
                   product={product}
                   isTop={isTop}
                   onSwipe={(liked) => handleSwipe(product, liked)}
+                  saveLabel={isRegistry ? "ADD" : "SAVE"}
+                  skipLabel="SKIP"
                 />
               );
             })

@@ -20,11 +20,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { useSession } from "@/context/SessionContext";
 import { useMode } from "@/context/ModeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,6 +61,7 @@ export default function BoardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useUser();
+  const { session, isActive } = useSession();
   const { isDecoration } = useMode();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -67,6 +70,7 @@ export default function BoardScreen() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [roomModalProduct, setRoomModalProduct] = useState<Product | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string>("All");
+  const [customRoomInput, setCustomRoomInput] = useState("");
 
   const { data: boardData, isLoading: boardLoading } = useGetStyleBoard({
     query: { enabled: isLoggedIn, staleTime: 0 },
@@ -80,8 +84,14 @@ export default function BoardScreen() {
     query: { enabled: isLoggedIn, staleTime: 0 },
   });
 
+  const sessionId = isActive && session ? session.id : undefined;
+
   const { data: roomsData } = useGetRooms({
-    query: { enabled: isLoggedIn && isDecoration, staleTime: 0 },
+    query: {
+      enabled: isLoggedIn && isDecoration,
+      staleTime: 0,
+      queryKey: ["/api/rooms", sessionId],
+    },
   });
 
   const assignToRoom = useAssignProductToRoom();
@@ -531,9 +541,45 @@ export default function BoardScreen() {
                   );
                 })}
               </ScrollView>
+
+              {/* Custom room name input */}
+              <View style={[s.customRoomRow, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                <TextInput
+                  style={[s.customRoomInput, { color: colors.foreground }]}
+                  placeholder="Custom room name…"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={customRoomInput}
+                  onChangeText={setCustomRoomInput}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    const name = customRoomInput.trim();
+                    if (name && roomModalProduct) {
+                      handleAssignRoom(roomModalProduct, name);
+                      setCustomRoomInput("");
+                    }
+                  }}
+                />
+                <Pressable
+                  style={[
+                    s.customRoomAddBtn,
+                    { backgroundColor: customRoomInput.trim() ? colors.primary : colors.border },
+                  ]}
+                  onPress={() => {
+                    const name = customRoomInput.trim();
+                    if (name && roomModalProduct) {
+                      handleAssignRoom(roomModalProduct, name);
+                      setCustomRoomInput("");
+                    }
+                  }}
+                  disabled={!customRoomInput.trim()}
+                >
+                  <Ionicons name="add" size={18} color={customRoomInput.trim() ? colors.primaryForeground : colors.mutedForeground} />
+                </Pressable>
+              </View>
+
               <Pressable
                 style={[s.doneBtn, { backgroundColor: colors.primary }]}
-                onPress={() => setRoomModalProduct(null)}
+                onPress={() => { setRoomModalProduct(null); setCustomRoomInput(""); }}
               >
                 <Text style={[s.doneBtnText, { color: colors.primaryForeground }]}>Done</Text>
               </Pressable>
@@ -789,6 +835,28 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
     doneBtnText: {
       fontSize: 16,
       fontFamily: "Inter_600SemiBold",
+    },
+    customRoomRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      gap: 8,
+    },
+    customRoomInput: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      paddingVertical: 8,
+    },
+    customRoomAddBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
     },
   });
 }

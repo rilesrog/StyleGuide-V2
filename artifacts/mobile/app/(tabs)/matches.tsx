@@ -122,8 +122,31 @@ export default function MatchesScreen() {
   const screenTitle = isRegistry ? "Registry" : "Matches";
 
   return (
+    <View style={[s.wrapper, { backgroundColor: colors.background }]}>
+      {/* New-match celebration burst — scales in/out above the title */}
+      <Animated.View
+        style={[
+          s.celebrationOverlay,
+          {
+            opacity: celebrationAnim,
+            transform: [
+              {
+                scale: celebrationAnim.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0.5, 1.3, 0.8],
+                }),
+              },
+            ],
+            pointerEvents: "none",
+          },
+        ]}
+      >
+        <Text style={s.celebrationEmoji}>🎉</Text>
+        <Text style={[s.celebrationText, { color: colors.primary }]}>New match!</Text>
+      </Animated.View>
+
     <ScrollView
-      style={[s.container, { backgroundColor: colors.background }]}
+      style={s.container}
       contentContainerStyle={[
         s.content,
         {
@@ -323,6 +346,7 @@ export default function MatchesScreen() {
         </>
       )}
     </ScrollView>
+    </View>
   );
 }
 
@@ -399,8 +423,26 @@ function MatchCard({
 
 function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useColors>) {
   return StyleSheet.create({
+    wrapper: { flex: 1 },
     container: { flex: 1 },
     content: { paddingHorizontal: 24, gap: 16 },
+    celebrationOverlay: {
+      position: "absolute",
+      top: 80,
+      left: 0,
+      right: 0,
+      zIndex: 99,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+    },
+    celebrationEmoji: {
+      fontSize: 48,
+    },
+    celebrationText: {
+      fontSize: 20,
+      fontFamily: "Inter_700Bold",
+    },
     titleRow: {
       flexDirection: "row",
       alignItems: "center",

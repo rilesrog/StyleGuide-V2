@@ -18,11 +18,15 @@ import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
 import { useMode, type AppMode } from "@/context/ModeContext";
 
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { name, email, isLoggedIn, logout } = useUser();
+  const { name, email, isLoggedIn, logout, token } = useUser();
   const { session, isActive, startSession, leaveSession } = useSession();
   const { mode, setMode } = useMode();
   const [startingSession, setStartingSession] = React.useState(false);
@@ -31,6 +35,17 @@ export default function ProfileScreen() {
   const handleModeSelect = async (m: AppMode) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await setMode(m);
+    // Keep session mode in sync with user mode
+    if (isActive && session?.id && token) {
+      fetch(`${API_BASE}/api/sessions/${session.id}/mode`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode: m }),
+      }).catch(() => {});
+    }
   };
 
   const handleStartSession = async () => {

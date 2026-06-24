@@ -19,7 +19,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
 
   const [session] = await db
     .insert(sessionsTable)
-    .values({ createdBy: userId, inviteToken, status: "pending", mode: "style" })
+    .values({ createdBy: userId, inviteToken, status: "pending", mode: "decoration" })
     .returning();
 
   const [creator] = await db

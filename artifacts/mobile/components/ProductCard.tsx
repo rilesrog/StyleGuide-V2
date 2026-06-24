@@ -26,9 +26,17 @@ interface ProductCardProps {
   };
   onSwipe: (liked: boolean) => void;
   isTop: boolean;
+  saveLabel?: string;
+  skipLabel?: string;
 }
 
-export function ProductCard({ product, onSwipe, isTop }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onSwipe,
+  isTop,
+  saveLabel = "SAVE",
+  skipLabel = "SKIP",
+}: ProductCardProps) {
   const colors = useColors();
   const pan = useRef(new Animated.ValueXY()).current;
 
@@ -108,10 +116,10 @@ export function ProductCard({ product, onSwipe, isTop }: ProductCardProps) {
       {isTop && (
         <>
           <Animated.View style={[styles.saveOverlay, { opacity: saveOpacity }]}>
-            <Text style={styles.saveText}>SAVE</Text>
+            <Text style={styles.saveText}>{saveLabel}</Text>
           </Animated.View>
           <Animated.View style={[styles.skipOverlay, { opacity: skipOpacity }]}>
-            <Text style={styles.skipText}>SKIP</Text>
+            <Text style={styles.skipText}>{skipLabel}</Text>
           </Animated.View>
         </>
       )}

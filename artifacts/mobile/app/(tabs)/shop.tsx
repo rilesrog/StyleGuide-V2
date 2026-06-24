@@ -60,6 +60,17 @@ export default function ShopScreen() {
 
   const swipeMutation = useRecordProductSwipe();
 
+  // Reset deck whenever the session context changes (solo ↔ shared session)
+  const prevSessionIdRef = React.useRef<number | undefined>(undefined);
+  React.useEffect(() => {
+    if (prevSessionIdRef.current === sessionId) return;
+    prevSessionIdRef.current = sessionId;
+    hasFetched.current = false;
+    setIsDone(false);
+    setDeck([]);
+    refetch();
+  }, [sessionId, refetch]);
+
   React.useEffect(() => {
     if (!data) return;
     if (hasFetched.current) return; // only seed deck from initial fetch

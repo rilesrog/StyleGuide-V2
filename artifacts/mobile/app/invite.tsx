@@ -2,6 +2,7 @@ import React from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -49,6 +50,21 @@ export default function InviteScreen() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       await navigator.clipboard.writeText(inviteUrl ?? "").catch(() => {});
     }
+  };
+
+  const handleEmailInvite = async () => {
+    const subject = encodeURIComponent("Join my StyleSwipe session");
+    const body = encodeURIComponent(
+      `Hi! I'd love to swipe through home décor together on StyleSwipe.\n\nJoin my session here: ${inviteUrl}`
+    );
+    await Linking.openURL(`mailto:?subject=${subject}&body=${body}`).catch(() => {});
+  };
+
+  const handleSmsInvite = async () => {
+    const body = encodeURIComponent(
+      `Join my StyleSwipe session and swipe together! ${inviteUrl}`
+    );
+    await Linking.openURL(`sms:?body=${body}`).catch(() => {});
   };
 
   const s = stylesheet(colors);
@@ -118,21 +134,36 @@ export default function InviteScreen() {
         </Pressable>
       )}
 
-      {/* Share button */}
+      {/* Share buttons */}
       {!isActive && (
         <>
           <Pressable
             style={[s.shareBtn, { backgroundColor: colors.primary }]}
-            onPress={handleShare}
+            onPress={handleEmailInvite}
           >
-            <Ionicons name="share-outline" size={20} color={colors.primaryForeground} />
+            <Ionicons name="mail-outline" size={20} color={colors.primaryForeground} />
             <Text style={[s.shareBtnText, { color: colors.primaryForeground }]}>
-              Share Invite
+              Invite via Email
             </Text>
           </Pressable>
-          <Text style={[s.hint, { color: colors.mutedForeground }]}>
-            Share via email, SMS, or any app
-          </Text>
+          <Pressable
+            style={[s.shareBtn, { backgroundColor: colors.secondary }]}
+            onPress={handleSmsInvite}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color={colors.secondaryForeground} />
+            <Text style={[s.shareBtnText, { color: colors.secondaryForeground }]}>
+              Invite via SMS
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.shareBtn, { backgroundColor: colors.muted }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={20} color={colors.mutedForeground} />
+            <Text style={[s.shareBtnText, { color: colors.mutedForeground }]}>
+              More Options
+            </Text>
+          </Pressable>
         </>
       )}
     </ScrollView>

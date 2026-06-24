@@ -150,6 +150,24 @@ router.post("/product-swipes", requireAuth, async (req, res) => {
     return;
   }
 
+  // If sessionId is provided, verify the caller is a member of that session
+  if (sessionId) {
+    const sessionRows = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, Number(sessionId)));
+
+    if (sessionRows.length === 0) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    const session = sessionRows[0];
+    if (session.createdBy !== userId && session.partnerId !== userId) {
+      res.status(403).json({ error: "Not a member of this session" });
+      return;
+    }
+  }
+
   const [swipe] = await db
     .insert(productSwipesTable)
     .values({

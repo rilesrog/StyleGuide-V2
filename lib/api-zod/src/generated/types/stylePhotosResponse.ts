@@ -5,7 +5,9 @@
  * StyleSwipe API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StylePhoto } from './stylePhoto';
 
-export interface HealthStatus {
-  status: string;
+export interface StylePhotosResponse {
+  photos: StylePhoto[];
+  total: number;
 }

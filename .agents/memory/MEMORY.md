@@ -1,0 +1,1 @@
+- [StyleSwipe stack decisions](styleswipe-stack.md) — token auth (email-only, no password), PanResponder swipe cards, Unsplash curated URLs for style photos

@@ -72,6 +72,8 @@ export default function BoardScreen() {
   const [selectedRoom, setSelectedRoom] = useState<string>("All");
   const [customRoomInput, setCustomRoomInput] = useState("");
 
+  const sessionId = isActive && session ? session.id : undefined;
+
   const { data: boardData, isLoading: boardLoading } = useGetStyleBoard({
     query: { enabled: isLoggedIn, staleTime: 0 },
   });
@@ -80,11 +82,10 @@ export default function BoardScreen() {
     query: { enabled: isLoggedIn, staleTime: 0 },
   });
 
-  const { data: productBoardData, isLoading: productBoardLoading } = useGetProductBoard({
-    query: { enabled: isLoggedIn, staleTime: 0 },
-  });
-
-  const sessionId = isActive && session ? session.id : undefined;
+  const { data: productBoardData, isLoading: productBoardLoading } = useGetProductBoard(
+    sessionId ? { sessionId } : undefined,
+    { query: { enabled: isLoggedIn, staleTime: 0 } }
+  );
 
   const { data: roomsData } = useGetRooms(
     sessionId ? { sessionId } : undefined,

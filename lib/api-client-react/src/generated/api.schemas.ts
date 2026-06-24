@@ -168,9 +168,22 @@ export interface UserMeResponse {
   mode?: string;
 }
 
+/**
+ * me = current user assigned this; partner = the other session member assigned this
+ */
+export type RoomProductItemOwner = typeof RoomProductItemOwner[keyof typeof RoomProductItemOwner];
+
+
+export const RoomProductItemOwner = {
+  me: 'me',
+  partner: 'partner',
+} as const;
+
 export interface RoomProductItem {
   id: number;
   product: Product;
+  /** me = current user assigned this; partner = the other session member assigned this */
+  owner: RoomProductItemOwner;
 }
 
 export interface RoomGroup {
@@ -201,6 +214,13 @@ offset?: number;
 export type GetProductFeedParams = {
 limit?: number;
 offset?: number;
+sessionId?: number;
+};
+
+export type GetProductBoardParams = {
+/**
+ * Active session ID; includes partner liked products in response
+ */
 sessionId?: number;
 };
 

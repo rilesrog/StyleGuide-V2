@@ -17,15 +17,18 @@ router.post("/sessions", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const inviteToken = crypto.randomBytes(16).toString("hex");
 
-  const [session] = await db
-    .insert(sessionsTable)
-    .values({ createdBy: userId, inviteToken, status: "pending", mode: "decoration" })
-    .returning();
-
-  const [creator] = await db
-    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+  // Inherit the creator's current mode so session starts in sync with their active mode
+  const [creatorUser] = await db
+    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, mode: usersTable.mode })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
+
+  const creatorMode = (creatorUser?.mode === "registry") ? "registry" : "decoration";
+
+  const [session] = await db
+    .insert(sessionsTable)
+    .values({ createdBy: userId, inviteToken, status: "pending", mode: creatorMode })
+    .returning();
 
   const origin = (req.headers.origin as string) ?? "";
   const inviteUrl = `${origin}/join/${inviteToken}`;
@@ -36,7 +39,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
     mode: session.mode,
     inviteToken: session.inviteToken,
     inviteUrl,
-    creator,
+    creator: { id: creatorUser.id, name: creatorUser.name, email: creatorUser.email },
     partner: null,
   });
 });

@@ -154,8 +154,12 @@ export const ImportProductsBody = zod.array(ImportProductsBodyItem)
 
 
 /**
- * @summary Get the user's liked products
+ * @summary Get the user's liked products (union with partner's when sessionId provided)
  */
+export const GetProductBoardQueryParams = zod.object({
+  "sessionId": zod.coerce.number().optional().describe('Active session ID; includes partner liked products in response')
+})
+
 export const GetProductBoardResponse = zod.object({
   "products": zod.array(zod.object({
   "id": zod.number(),
@@ -361,7 +365,8 @@ export const GetRoomsResponse = zod.object({
   "brand": zod.string().optional(),
   "source": zod.string().optional(),
   "affiliateUrl": zod.string().optional()
-})
+}),
+  "owner": zod.enum(['me', 'partner']).describe('me = current user assigned this; partner = the other session member assigned this')
 }))
 })),
   "presetRooms": zod.array(zod.string())

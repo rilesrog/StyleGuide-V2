@@ -232,9 +232,16 @@ paths:
     get:
       operationId: getProductBoard
       tags: [products]
-      summary: Get the user's liked products
+      summary: Get the user's liked products (union with partner's when sessionId provided)
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: sessionId
+          schema:
+            type: integer
+          required: false
+          description: Active session ID; includes partner liked products in response
       responses:
         "200":
           description: Liked products
@@ -940,9 +947,14 @@ components:
           type: integer
         product:
           $ref: "#/components/schemas/Product"
+        owner:
+          type: string
+          enum: [me, partner]
+          description: "me = current user assigned this; partner = the other session member assigned this"
       required:
         - id
         - product
+        - owner
 
     RoomGroup:
       type: object

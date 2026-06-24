@@ -6,7 +6,7 @@ import {
   styleProfilesTable,
   sessionsTable,
 } from "@workspace/db/schema";
-import { eq, and, notInArray, inArray } from "drizzle-orm";
+import { eq, and, notInArray, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -183,8 +183,31 @@ router.post("/product-swipes", requireAuth, async (req, res) => {
 
 router.get("/products/board", requireAuth, async (req, res) => {
   const userId = req.userId!;
+  const sessionId = req.query.sessionId ? Number(req.query.sessionId) : undefined;
 
-  const products = await db
+  // Determine which user IDs to include
+  let userIds: number[] = [userId];
+
+  if (sessionId) {
+    const [session] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, sessionId))
+      .limit(1);
+
+    if (session && session.status === "active") {
+      const partnerId =
+        session.createdBy === userId
+          ? session.partnerId
+          : session.partnerId === userId
+          ? session.createdBy
+          : null;
+      if (partnerId) userIds = [userId, partnerId];
+    }
+  }
+
+  // Fetch liked products for all relevant users, deduplicated by productId
+  const rows = await db
     .select({
       id: productsTable.id,
       url: productsTable.url,
@@ -195,11 +218,41 @@ router.get("/products/board", requireAuth, async (req, res) => {
       brand: productsTable.brand,
       source: productsTable.source,
       affiliateUrl: productsTable.affiliateUrl,
+      likedByUserId: productSwipesTable.userId,
     })
     .from(productSwipesTable)
     .innerJoin(productsTable, eq(productSwipesTable.productId, productsTable.id))
-    .where(and(eq(productSwipesTable.userId, userId), eq(productSwipesTable.liked, true)))
+    .where(
+      and(
+        inArray(productSwipesTable.userId, userIds),
+        eq(productSwipesTable.liked, true)
+      )
+    )
     .orderBy(productSwipesTable.createdAt);
+
+  // Deduplicate: one product entry per unique product id, annotated with likedByPartner
+  const seen = new Set<number>();
+  const products: Array<{
+    id: number; url: string; name: string; price: number; tags: string[];
+    category: string; brand: string | null; source: string | null;
+    affiliateUrl: string | null; likedByPartner: boolean;
+  }> = [];
+
+  for (const row of rows) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id);
+      products.push({
+        id: row.id, url: row.url, name: row.name, price: row.price,
+        tags: row.tags, category: row.category, brand: row.brand,
+        source: row.source, affiliateUrl: row.affiliateUrl,
+        likedByPartner: row.likedByUserId !== userId,
+      });
+    } else {
+      // A second row means the partner also liked this product
+      const existing = products.find((p) => p.id === row.id);
+      if (existing && row.likedByUserId !== userId) existing.likedByPartner = true;
+    }
+  }
 
   res.json({ products });
 });

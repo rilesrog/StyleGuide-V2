@@ -22,6 +22,7 @@ import type {
 import type {
   AuthResponse,
   ErrorResponse,
+  GetProductBoardParams,
   GetProductFeedParams,
   GetRoomsParams,
   GetStylePhotosParams,
@@ -818,20 +819,27 @@ export const useImportProducts = <TError = ErrorType<unknown>,
       return useMutation(getImportProductsMutationOptions(options));
     }
 
-export const getGetProductBoardUrl = () => {
+export const getGetProductBoardUrl = (params?: GetProductBoardParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/products/board`
+  return stringifiedParams.length > 0 ? `/api/products/board?${stringifiedParams}` : `/api/products/board`
 }
 
 /**
- * @summary Get the user's liked products
+ * @summary Get the user's liked products (union with partner's when sessionId provided)
  */
-export const getProductBoard = async ( options?: RequestInit): Promise<ProductBoardResponse> => {
+export const getProductBoard = async (params?: GetProductBoardParams, options?: RequestInit): Promise<ProductBoardResponse> => {
 
-  return customFetch<ProductBoardResponse>(getGetProductBoardUrl(),
+  return customFetch<ProductBoardResponse>(getGetProductBoardUrl(params),
   {
     ...options,
     method: 'GET'
@@ -844,23 +852,23 @@ export const getProductBoard = async ( options?: RequestInit): Promise<ProductBo
 
 
 
-export const getGetProductBoardQueryKey = () => {
+export const getGetProductBoardQueryKey = (params?: GetProductBoardParams,) => {
     return [
-    `/api/products/board`
+    `/api/products/board`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetProductBoardQueryOptions = <TData = Awaited<ReturnType<typeof getProductBoard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetProductBoardQueryOptions = <TData = Awaited<ReturnType<typeof getProductBoard>>, TError = ErrorType<unknown>>(params?: GetProductBoardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetProductBoardQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetProductBoardQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductBoard>>> = ({ signal }) => getProductBoard({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductBoard>>> = ({ signal }) => getProductBoard(params, { signal, ...requestOptions });
 
 
 
@@ -874,15 +882,15 @@ export type GetProductBoardQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get the user's liked products
+ * @summary Get the user's liked products (union with partner's when sessionId provided)
  */
 
 export function useGetProductBoard<TData = Awaited<ReturnType<typeof getProductBoard>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetProductBoardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetProductBoardQueryOptions(options)
+  const queryOptions = getGetProductBoardQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

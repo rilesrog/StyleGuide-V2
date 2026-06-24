@@ -514,7 +514,7 @@ components:
     ImportProductItem:
       type: object
       properties:
-        url:
+        photo_url:
           type: string
         name:
           type: string
@@ -531,11 +531,10 @@ components:
         affiliateUrl:
           type: string
       required:
-        - url
+        - photo_url
         - name
         - price
         - tags
-        - category
 
     ImportProductsResponse:
       type: object

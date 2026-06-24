@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/products/feed", requireAuth, async (req, res) => {
   const userId = req.userId!;
-  const limit = Math.min(Number(req.query.limit) || 20, 50);
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
   const swipedRows = await db
@@ -27,22 +27,22 @@ router.get("/products/feed", requireAuth, async (req, res) => {
   const tagWeights: Record<string, number> =
     (profileRow[0]?.tagWeights as Record<string, number> | null) ?? {};
 
-  let allProducts;
+  // Fetch all unswiped products so ranking and pagination are stable
+  // (offset over a filtered set would skip products as swipes accumulate)
+  let candidates;
   if (swipedIds.length > 0) {
-    allProducts = await db
+    candidates = await db
       .select()
       .from(productsTable)
       .where(notInArray(productsTable.id, swipedIds));
   } else {
-    allProducts = await db.select().from(productsTable);
+    candidates = await db.select().from(productsTable);
   }
 
-  const totalCount = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(productsTable);
-  const total = totalCount[0]?.count ?? 0;
+  // total reflects the unswiped candidate count, not the full catalog size
+  const total = candidates.length;
 
-  const scored = allProducts.map((p) => {
+  const scored = candidates.map((p) => {
     let score = 0;
     for (const tag of p.tags ?? []) {
       score += tagWeights[tag] ?? 0;
@@ -100,11 +100,11 @@ router.get("/products/board", requireAuth, async (req, res) => {
 router.post("/products/import", requireAuth, async (req, res) => {
   const { products } = req.body as {
     products?: Array<{
-      url: string;
+      photo_url: string;
       name: string;
       price: number;
       tags: string[];
-      category: string;
+      category?: string;
       brand?: string;
       affiliateUrl?: string;
     }>;
@@ -119,11 +119,11 @@ router.post("/products/import", requireAuth, async (req, res) => {
     .insert(productsTable)
     .values(
       products.map((p) => ({
-        url: p.url,
+        url: p.photo_url,
         name: p.name,
         price: p.price,
         tags: p.tags,
-        category: p.category,
+        category: p.category ?? "general",
         brand: p.brand ?? null,
         source: "import",
         affiliateUrl: p.affiliateUrl ?? null,

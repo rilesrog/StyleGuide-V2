@@ -19,7 +19,6 @@ import { useUser } from "@/context/UserContext";
 import { ProductCard } from "@/components/ProductCard";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
-const BATCH_SIZE = 20;
 
 type Product = {
   id: number;
@@ -40,40 +39,49 @@ export default function ShopScreen() {
   const queryClient = useQueryClient();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
-  const [offset, setOffset] = useState(0);
+  // deck = local ranked list of unswiped products from this fetch
   const [deck, setDeck] = useState<Product[]>([]);
   const [isDone, setIsDone] = useState(false);
   const swipeInFlight = useRef(false);
+  const hasFetched = useRef(false);
 
+  // Always fetch from offset 0 with a large limit — pagination against a changing
+  // filter set causes skipped products; instead we load all ranked candidates at once
+  // and maintain deck state client-side.
   const { data, isLoading, refetch } = useGetProductFeed(
-    { limit: BATCH_SIZE, offset },
+    { limit: 200, offset: 0 },
     { query: { enabled: isLoggedIn, staleTime: 0 } }
   );
 
   const swipeMutation = useRecordProductSwipe();
 
   React.useEffect(() => {
-    if (data?.products && data.products.length > 0) {
-      setDeck((prev) => {
-        const existingIds = new Set(prev.map((p) => p.id));
-        const newOnes = (data.products as Product[]).filter((p) => !existingIds.has(p.id));
-        return [...prev, ...newOnes];
-      });
-    }
-    if (data?.products && data.products.length === 0 && deck.length === 0) {
+    if (!data) return;
+    if (hasFetched.current) return; // only seed deck from initial fetch
+    hasFetched.current = true;
+
+    const incoming = (data.products ?? []) as Product[];
+    if (incoming.length === 0) {
       setIsDone(true);
+    } else {
+      setDeck(incoming);
     }
   }, [data]);
 
+  const resetDeck = useCallback(() => {
+    hasFetched.current = false;
+    setIsDone(false);
+    setDeck([]);
+    refetch();
+  }, [refetch]);
+
   useFocusEffect(
     useCallback(() => {
-      if (isDone) {
-        setIsDone(false);
-        setDeck([]);
-        setOffset(0);
-        refetch();
+      // If user retook quiz from board, reset shop deck
+      if (isDone && !hasFetched.current) {
+        resetDeck();
       }
-    }, [isDone])
+    }, [isDone, resetDeck])
   );
 
   const handleSwipe = useCallback(
@@ -87,14 +95,10 @@ export default function ShopScreen() {
         );
       }
 
+      // Remove swiped card from local deck immediately — no re-fetch needed
       setDeck((prev) => {
-        const next = prev.slice(1);
-        if (next.length <= 3 && (data?.total ?? 0) > offset + BATCH_SIZE) {
-          setOffset((o) => o + BATCH_SIZE);
-        }
-        if (next.length === 0) {
-          setIsDone(true);
-        }
+        const next = prev.filter((p) => p.id !== product.id);
+        if (next.length === 0) setIsDone(true);
         return next;
       });
 
@@ -104,11 +108,12 @@ export default function ShopScreen() {
           queryClient.invalidateQueries({ queryKey: ["/api/products/board"] });
         }
       } catch {
+        // swipe failed silently; card is already removed from deck
       } finally {
         swipeInFlight.current = false;
       }
     },
-    [data, offset, swipeMutation, queryClient]
+    [swipeMutation, queryClient]
   );
 
   if (!isLoggedIn) return null;
@@ -120,7 +125,7 @@ export default function ShopScreen() {
       <View style={[styles.header, { paddingTop: topInset + 8 }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Shop</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Curated for your style
+          {deck.length > 0 ? `${deck.length} picks for your style` : "Curated for your style"}
         </Text>
       </View>
 
@@ -138,12 +143,7 @@ export default function ShopScreen() {
             </Text>
             <Pressable
               style={[styles.reloadBtn, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                setDeck([]);
-                setOffset(0);
-                setIsDone(false);
-                refetch();
-              }}
+              onPress={resetDeck}
             >
               <Ionicons name="refresh-outline" size={18} color={colors.primaryForeground} />
               <Text style={[styles.reloadBtnText, { color: colors.primaryForeground }]}>
@@ -170,7 +170,15 @@ export default function ShopScreen() {
       </View>
 
       {!isDone && deck.length > 0 && (
-        <View style={[styles.hint, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}>
+        <View
+          style={[
+            styles.hint,
+            {
+              paddingBottom:
+                insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80,
+            },
+          ]}
+        >
           <Ionicons name="arrow-back-outline" size={16} color={colors.mutedForeground} />
           <Text style={[styles.hintText, { color: colors.mutedForeground }]}>skip</Text>
           <View style={styles.hintSpacer} />

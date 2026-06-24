@@ -106,11 +106,11 @@ export interface ProductBoardResponse {
 }
 
 export interface ImportProductItem {
-  url: string;
+  photo_url: string;
   name: string;
   price: number;
   tags: string[];
-  category: string;
+  category?: string;
   brand?: string;
   affiliateUrl?: string;
 }

@@ -142,11 +142,11 @@ export const GetProductFeedResponse = zod.object({
  */
 export const ImportProductsBody = zod.object({
   "products": zod.array(zod.object({
-  "url": zod.string(),
+  "photo_url": zod.string(),
   "name": zod.string(),
   "price": zod.number(),
   "tags": zod.array(zod.string()),
-  "category": zod.string(),
+  "category": zod.string().optional(),
   "brand": zod.string().optional(),
   "affiliateUrl": zod.string().optional()
 }))

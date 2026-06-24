@@ -209,7 +209,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImportProductsRequest"
+              type: array
+              items:
+                $ref: "#/components/schemas/ImportProductItem"
       responses:
         "201":
           description: Products imported

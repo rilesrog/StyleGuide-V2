@@ -140,8 +140,7 @@ export const GetProductFeedResponse = zod.object({
 /**
  * @summary Import products from an external source
  */
-export const ImportProductsBody = zod.object({
-  "products": zod.array(zod.object({
+export const ImportProductsBodyItem = zod.object({
   "photo_url": zod.string(),
   "name": zod.string(),
   "price": zod.number(),
@@ -149,8 +148,8 @@ export const ImportProductsBody = zod.object({
   "category": zod.string().optional(),
   "brand": zod.string().optional(),
   "affiliateUrl": zod.string().optional()
-}))
 })
+export const ImportProductsBody = zod.array(ImportProductsBodyItem)
 
 
 /**

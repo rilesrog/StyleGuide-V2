@@ -25,7 +25,7 @@ import type {
   GetProductFeedParams,
   GetStylePhotosParams,
   HealthStatus,
-  ImportProductsRequest,
+  ImportProductItem,
   ImportProductsResponse,
   LoginRequest,
   ProductBoardResponse,
@@ -747,7 +747,7 @@ export const getImportProductsUrl = () => {
 /**
  * @summary Import products from an external source
  */
-export const importProducts = async (importProductsRequest: ImportProductsRequest, options?: RequestInit): Promise<ImportProductsResponse> => {
+export const importProducts = async (importProductItem: ImportProductItem[], options?: RequestInit): Promise<ImportProductsResponse> => {
 
   return customFetch<ImportProductsResponse>(getImportProductsUrl(),
   {
@@ -755,7 +755,7 @@ export const importProducts = async (importProductsRequest: ImportProductsReques
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      importProductsRequest,)
+      importProductItem,)
   }
 );}
 
@@ -763,8 +763,8 @@ export const importProducts = async (importProductsRequest: ImportProductsReques
 
 
 export const getImportProductsMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductItem[]>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductItem[]>}, TContext> => {
 
 const mutationKey = ['importProducts'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -776,7 +776,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importProducts>>, {data: BodyType<ImportProductsRequest>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importProducts>>, {data: BodyType<ImportProductItem[]>}> = (props) => {
           const {data} = props ?? {};
 
           return  importProducts(data,requestOptions)
@@ -790,18 +790,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ImportProductsMutationResult = NonNullable<Awaited<ReturnType<typeof importProducts>>>
-    export type ImportProductsMutationBody = BodyType<ImportProductsRequest>
+    export type ImportProductsMutationBody = BodyType<ImportProductItem[]>
     export type ImportProductsMutationError = ErrorType<unknown>
 
     /**
  * @summary Import products from an external source
  */
 export const useImportProducts = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductItem[]>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof importProducts>>,
         TError,
-        {data: BodyType<ImportProductsRequest>},
+        {data: BodyType<ImportProductItem[]>},
         TContext
       > => {
       return useMutation(getImportProductsMutationOptions(options));

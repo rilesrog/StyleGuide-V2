@@ -24,8 +24,14 @@ router.get("/products/feed", requireAuth, async (req, res) => {
     .where(eq(styleProfilesTable.userId, userId))
     .limit(1);
 
-  const tagWeights: Record<string, number> =
-    (profileRow[0]?.tagWeights as Record<string, number> | null) ?? {};
+  // tagWeights is persisted as [{tag, count, score}] array — convert to lookup map
+  const rawWeights = (
+    profileRow[0]?.tagWeights as Array<{ tag: string; score: number }> | null
+  ) ?? [];
+  const tagWeightMap: Record<string, number> = {};
+  for (const { tag, score } of rawWeights) {
+    tagWeightMap[tag] = score;
+  }
 
   // Fetch all unswiped products so ranking and pagination are stable
   // (offset over a filtered set would skip products as swipes accumulate)
@@ -45,7 +51,7 @@ router.get("/products/feed", requireAuth, async (req, res) => {
   const scored = candidates.map((p) => {
     let score = 0;
     for (const tag of p.tags ?? []) {
-      score += tagWeights[tag] ?? 0;
+      score += tagWeightMap[tag] ?? 0;
     }
     return { ...p, _score: score };
   });
@@ -98,20 +104,19 @@ router.get("/products/board", requireAuth, async (req, res) => {
 });
 
 router.post("/products/import", requireAuth, async (req, res) => {
-  const { products } = req.body as {
-    products?: Array<{
-      photo_url: string;
-      name: string;
-      price: number;
-      tags: string[];
-      category?: string;
-      brand?: string;
-      affiliateUrl?: string;
-    }>;
-  };
+  // Body is a raw array: [{photo_url, name, price, tags, category?, brand?, affiliateUrl?}]
+  const products = req.body as Array<{
+    photo_url: string;
+    name: string;
+    price: number;
+    tags: string[];
+    category?: string;
+    brand?: string;
+    affiliateUrl?: string;
+  }>;
 
   if (!Array.isArray(products) || products.length === 0) {
-    res.status(400).json({ error: "products array is required" });
+    res.status(400).json({ error: "body must be a non-empty array of products" });
     return;
   }
 

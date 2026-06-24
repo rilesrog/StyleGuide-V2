@@ -65,10 +65,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<ActiveSession | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     tokenRef.current = authToken;
   }, [authToken]);
+
+  useEffect(() => {
+    sessionIdRef.current = session?.id ?? null;
+  }, [session?.id]);
 
   const authHeaders = useCallback(
     (): Record<string, string> => ({
@@ -78,10 +83,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // Stable refreshSession — reads session ID from a ref so polling interval
+  // never restarts just because session state changed (which would reset the timer).
   const refreshSession = useCallback(async () => {
-    if (!session) return;
+    const id = sessionIdRef.current;
+    if (!id) return;
     try {
-      const resp = await fetch(`${API_BASE}/api/sessions/${session.id}`, {
+      const resp = await fetch(`${API_BASE}/api/sessions/${id}`, {
         headers: authHeaders(),
       });
       if (resp.ok) {
@@ -89,10 +97,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setSession(data);
       }
     } catch {}
-  }, [session, authHeaders]);
+  }, [authHeaders]);
 
-  // Poll every 5 seconds while a session exists (pending or active)
-  // Active polling lets partners pick up mode changes from the other partner
+  // Poll every 5 seconds while a session exists (pending or active).
+  // Depends only on session?.id so the interval is stable across polls.
+  // Partners pick up mode changes from each other via session.mode in the response.
   useEffect(() => {
     if (!session) {
       if (pollingRef.current) {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { stylePhotosTable, swipesTable } from "@workspace/db/schema";
+import { stylePhotosTable, swipesTable, styleProfilesTable } from "@workspace/db/schema";
 import { eq, and, notInArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
@@ -45,13 +45,22 @@ router.post("/swipes", requireAuth, async (req, res) => {
     return;
   }
 
-  const [swipe] = await db.insert(swipesTable).values({
-    userId,
-    photoId: Number(photoId),
-    liked: Boolean(liked),
-  }).returning();
+  const [swipe] = await db
+    .insert(swipesTable)
+    .values({ userId, photoId: Number(photoId), liked: Boolean(liked) })
+    .returning();
+
+  // Persist updated style profile
+  await persistStyleProfile(userId);
 
   res.status(201).json({ success: true, swipeId: swipe.id });
+});
+
+router.delete("/swipes", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  await db.delete(swipesTable).where(eq(swipesTable.userId, userId));
+  await db.delete(styleProfilesTable).where(eq(styleProfilesTable.userId, userId));
+  res.json({ success: true });
 });
 
 router.get("/style-profile", requireAuth, async (req, res) => {
@@ -108,5 +117,37 @@ router.get("/style-board", requireAuth, async (req, res) => {
 
   res.json({ photos });
 });
+
+async function persistStyleProfile(userId: number) {
+  const likedPhotos = await db
+    .select({ tags: stylePhotosTable.tags })
+    .from(swipesTable)
+    .innerJoin(stylePhotosTable, eq(swipesTable.photoId, stylePhotosTable.id))
+    .where(and(eq(swipesTable.userId, userId), eq(swipesTable.liked, true)));
+
+  const likedCount = likedPhotos.length;
+  const tagCounts: Record<string, number> = {};
+  for (const { tags } of likedPhotos) {
+    for (const tag of tags ?? []) {
+      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+    }
+  }
+
+  const tagWeights = Object.entries(tagCounts)
+    .map(([tag, count]) => ({
+      tag,
+      count,
+      score: likedCount > 0 ? count / likedCount : 0,
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  await db
+    .insert(styleProfilesTable)
+    .values({ userId, tagWeights })
+    .onConflictDoUpdate({
+      target: styleProfilesTable.userId,
+      set: { tagWeights, updatedAt: new Date() },
+    });
+}
 
 export default router;

@@ -12,6 +12,7 @@ export * from './getStylePhotosParams';
 export * from './healthStatus';
 export * from './loginRequest';
 export * from './registerRequest';
+export * from './resetSwipesResponse';
 export * from './styleBoardResponse';
 export * from './stylePhoto';
 export * from './stylePhotosResponse';

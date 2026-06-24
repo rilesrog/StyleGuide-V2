@@ -26,6 +26,7 @@ import type {
   HealthStatus,
   LoginRequest,
   RegisterRequest,
+  ResetSwipesResponse,
   StyleBoardResponse,
   StylePhotosResponse,
   StyleProfileResponse,
@@ -203,7 +204,7 @@ export const getLoginUserUrl = () => {
 }
 
 /**
- * @summary Login with email
+ * @summary Login with email and password
  */
 export const loginUser = async (loginRequest: LoginRequest, options?: RequestInit): Promise<AuthResponse> => {
 
@@ -252,7 +253,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LoginUserMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Login with email
+ * @summary Login with email and password
  */
 export const useLoginUser = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginUser>>, TError,{data: BodyType<LoginRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -418,6 +419,76 @@ export const useRecordSwipe = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRecordSwipeMutationOptions(options));
+    }
+
+export const getResetSwipesUrl = () => {
+
+
+
+
+  return `/api/swipes`
+}
+
+/**
+ * @summary Reset all swipes for the current user (retake quiz)
+ */
+export const resetSwipes = async ( options?: RequestInit): Promise<ResetSwipesResponse> => {
+
+  return customFetch<ResetSwipesResponse>(getResetSwipesUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getResetSwipesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSwipes>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetSwipes>>, TError,void, TContext> => {
+
+const mutationKey = ['resetSwipes'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetSwipes>>, void> = () => {
+
+
+          return  resetSwipes(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetSwipesMutationResult = NonNullable<Awaited<ReturnType<typeof resetSwipes>>>
+
+    export type ResetSwipesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reset all swipes for the current user (retake quiz)
+ */
+export const useResetSwipes = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSwipes>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetSwipes>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResetSwipesMutationOptions(options));
     }
 
 export const getGetStyleProfileUrl = () => {

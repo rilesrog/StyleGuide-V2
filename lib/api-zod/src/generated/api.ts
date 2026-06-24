@@ -22,15 +22,17 @@ export const HealthCheckResponse = zod.object({
  */
 export const RegisterUserBody = zod.object({
   "name": zod.string(),
-  "email": zod.string()
+  "email": zod.string(),
+  "password": zod.string()
 })
 
 
 /**
- * @summary Login with email
+ * @summary Login with email and password
  */
 export const LoginUserBody = zod.object({
-  "email": zod.string()
+  "email": zod.string(),
+  "password": zod.string()
 })
 
 export const LoginUserResponse = zod.object({
@@ -69,6 +71,14 @@ export const GetStylePhotosResponse = zod.object({
 export const RecordSwipeBody = zod.object({
   "photoId": zod.number(),
   "liked": zod.boolean()
+})
+
+
+/**
+ * @summary Reset all swipes for the current user (retake quiz)
+ */
+export const ResetSwipesResponse = zod.object({
+  "success": zod.boolean()
 })
 
 

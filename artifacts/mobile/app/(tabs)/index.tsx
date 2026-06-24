@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
@@ -46,6 +47,25 @@ export default function DiscoverScreen() {
 
   const recordSwipe = useRecordSwipe();
 
+  // Reset when this tab is focused (e.g., after retake quiz)
+  useFocusEffect(
+    useCallback(() => {
+      if (isDone) {
+        refetch().then((result) => {
+          const newPhotos = result.data?.photos as Photo[] | undefined;
+          if (newPhotos && newPhotos.length > 0) {
+            setPhotos(newPhotos);
+            setIsDone(false);
+            setSwipeCount(0);
+            setOffset(0);
+            setTotalAvailable(result.data?.total ?? null);
+            isLoadingMore.current = false;
+          }
+        });
+      }
+    }, [isDone, refetch])
+  );
+
   useEffect(() => {
     if (photosData?.photos) {
       const newPhotos = photosData.photos as Photo[];
@@ -80,12 +100,20 @@ export default function DiscoverScreen() {
       }
 
       const remaining = photos.length - 1;
-      if (remaining < 5 && !isLoadingMore.current && (totalAvailable === null || offset + BATCH_SIZE < totalAvailable)) {
+      if (
+        remaining < 5 &&
+        !isLoadingMore.current &&
+        (totalAvailable === null || offset + BATCH_SIZE < totalAvailable)
+      ) {
         isLoadingMore.current = true;
         setOffset((o) => o + BATCH_SIZE);
       }
 
-      if (remaining === 0 && (totalAvailable !== null && offset + BATCH_SIZE >= totalAvailable)) {
+      if (
+        remaining === 0 &&
+        totalAvailable !== null &&
+        offset + BATCH_SIZE >= totalAvailable
+      ) {
         setIsDone(true);
       }
     },
@@ -125,7 +153,10 @@ export default function DiscoverScreen() {
         <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
           You swiped {swipeCount} photos.{"\n"}Check your Board to see your style!
         </Text>
-        <Pressable style={[s.retakeBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleRetake}>
+        <Pressable
+          style={[s.retakeBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handleRetake}
+        >
           <Text style={[s.retakeBtnText, { color: colors.foreground }]}>Retake Quiz</Text>
         </Pressable>
       </View>
@@ -166,10 +197,17 @@ export default function DiscoverScreen() {
         )}
       </View>
 
-      <View style={[s.actions, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16 }]}>
+      <View
+        style={[
+          s.actions,
+          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16 },
+        ]}
+      >
         <View style={[s.hintBox, { backgroundColor: colors.card }]}>
           <Ionicons name="arrow-back" size={16} color={colors.mutedForeground} />
-          <Text style={[s.hint, { color: colors.mutedForeground }]}>Swipe left to skip, right to save</Text>
+          <Text style={[s.hint, { color: colors.mutedForeground }]}>
+            Swipe left to skip, right to save
+          </Text>
           <Ionicons name="arrow-forward" size={16} color={colors.mutedForeground} />
         </View>
       </View>
@@ -179,9 +217,7 @@ export default function DiscoverScreen() {
 
 function stylesheet(colors: ReturnType<typeof useColors>) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
+    container: { flex: 1 },
     center: {
       flex: 1,
       alignItems: "center",
@@ -196,25 +232,15 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       alignItems: "baseline",
       justifyContent: "space-between",
     },
-    headerTitle: {
-      fontSize: 28,
-      fontFamily: "Inter_700Bold",
-    },
-    headerSub: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-    },
+    headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
+    headerSub: { fontSize: 14, fontFamily: "Inter_400Regular" },
     deckArea: {
       marginHorizontal: 16,
       position: "relative",
       alignItems: "center",
       justifyContent: "center",
     },
-    actions: {
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      alignItems: "center",
-    },
+    actions: { paddingHorizontal: 24, paddingTop: 16, alignItems: "center" },
     hintBox: {
       flexDirection: "row",
       alignItems: "center",
@@ -223,10 +249,7 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       paddingVertical: 10,
       borderRadius: 20,
     },
-    hint: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-    },
+    hint: { fontSize: 13, fontFamily: "Inter_400Regular" },
     doneIcon: {
       width: 80,
       height: 80,
@@ -234,11 +257,7 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       alignItems: "center",
       justifyContent: "center",
     },
-    doneTitle: {
-      fontSize: 24,
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
-    },
+    doneTitle: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
     doneSubtitle: {
       fontSize: 16,
       fontFamily: "Inter_400Regular",
@@ -252,9 +271,6 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       borderWidth: 1,
       marginTop: 8,
     },
-    retakeBtnText: {
-      fontSize: 16,
-      fontFamily: "Inter_500Medium",
-    },
+    retakeBtnText: { fontSize: 16, fontFamily: "Inter_500Medium" },
   });
 }

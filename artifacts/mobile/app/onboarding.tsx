@@ -24,6 +24,7 @@ export default function Onboarding() {
   const [mode, setMode] = useState<Mode>("welcome");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const registerMutation = useRegisterUser();
@@ -33,16 +34,22 @@ export default function Onboarding() {
 
   const handleGetStarted = async () => {
     setError("");
-    if (!name.trim() || !email.trim()) {
+    if (!name.trim() || !email.trim() || !password.trim()) {
       setError("Please fill in all fields");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const data = await registerMutation.mutateAsync({ data: { name: name.trim(), email: email.trim() } });
+      const data = await registerMutation.mutateAsync({
+        data: { name: name.trim(), email: email.trim(), password },
+      });
       await login(data.userId, data.name, data.email, data.token);
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: string }; status?: number };
+      const apiErr = err as { status?: number };
       if (apiErr?.status === 409) {
         setError("Email already registered. Sign in instead.");
       } else {
@@ -53,16 +60,18 @@ export default function Onboarding() {
 
   const handleSignIn = async () => {
     setError("");
-    if (!email.trim()) {
-      setError("Please enter your email");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter your email and password");
       return;
     }
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const data = await loginMutation.mutateAsync({ data: { email: email.trim() } });
+      const data = await loginMutation.mutateAsync({
+        data: { email: email.trim(), password },
+      });
       await login(data.userId, data.name, data.email, data.token);
     } catch {
-      setError("No account found with that email.");
+      setError("Invalid email or password.");
     }
   };
 
@@ -75,7 +84,13 @@ export default function Onboarding() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={[s.scroll, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: insets.bottom + 24 }]}
+          contentContainerStyle={[
+            s.scroll,
+            {
+              paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
+              paddingBottom: insets.bottom + 24,
+            },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -95,7 +110,9 @@ export default function Onboarding() {
                 style={[s.primaryBtn, { backgroundColor: colors.primary }]}
                 onPress={() => setMode("register")}
               >
-                <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>Create Account</Text>
+                <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
+                  Create Account
+                </Text>
               </Pressable>
               <Pressable
                 style={[s.secondaryBtn, { borderColor: colors.border }]}
@@ -112,7 +129,10 @@ export default function Onboarding() {
                 <View style={s.inputGroup}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>Your Name</Text>
                   <TextInput
-                    style={[s.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                    style={[
+                      s.input,
+                      { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
+                    ]}
                     value={name}
                     onChangeText={setName}
                     placeholder="e.g. Alex Rivera"
@@ -126,7 +146,10 @@ export default function Onboarding() {
               <View style={s.inputGroup}>
                 <Text style={[s.label, { color: colors.mutedForeground }]}>Email</Text>
                 <TextInput
-                  style={[s.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                  style={[
+                    s.input,
+                    { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
+                  ]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="you@example.com"
@@ -134,6 +157,22 @@ export default function Onboarding() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="next"
+                />
+              </View>
+
+              <View style={s.inputGroup}>
+                <Text style={[s.label, { color: colors.mutedForeground }]}>Password</Text>
+                <TextInput
+                  style={[
+                    s.input,
+                    { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
+                  ]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Min. 6 characters"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry
                   returnKeyType="done"
                   onSubmitEditing={mode === "register" ? handleGetStarted : handleSignIn}
                 />
@@ -144,7 +183,10 @@ export default function Onboarding() {
               ) : null}
 
               <Pressable
-                style={[s.primaryBtn, { backgroundColor: colors.primary, opacity: isLoading ? 0.6 : 1 }]}
+                style={[
+                  s.primaryBtn,
+                  { backgroundColor: colors.primary, opacity: isLoading ? 0.6 : 1 },
+                ]}
                 onPress={mode === "register" ? handleGetStarted : handleSignIn}
                 disabled={isLoading}
               >
@@ -153,13 +195,27 @@ export default function Onboarding() {
                 </Text>
               </Pressable>
 
-              <Pressable onPress={() => { setMode(mode === "register" ? "login" : "register"); setError(""); }}>
+              <Pressable
+                onPress={() => {
+                  setMode(mode === "register" ? "login" : "register");
+                  setError("");
+                  setPassword("");
+                }}
+              >
                 <Text style={[s.switchText, { color: colors.mutedForeground }]}>
-                  {mode === "register" ? "Already have an account? Sign in" : "New here? Create an account"}
+                  {mode === "register"
+                    ? "Already have an account? Sign in"
+                    : "New here? Create an account"}
                 </Text>
               </Pressable>
 
-              <Pressable onPress={() => { setMode("welcome"); setError(""); }}>
+              <Pressable
+                onPress={() => {
+                  setMode("welcome");
+                  setError("");
+                  setPassword("");
+                }}
+              >
                 <Text style={[s.backText, { color: colors.mutedForeground }]}>Back</Text>
               </Pressable>
             </View>
@@ -172,19 +228,9 @@ export default function Onboarding() {
 
 function styles(colors: ReturnType<typeof useColors>) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    scroll: {
-      flexGrow: 1,
-      paddingHorizontal: 28,
-    },
-    heroSection: {
-      alignItems: "center",
-      paddingTop: 48,
-      paddingBottom: 48,
-      gap: 12,
-    },
+    container: { flex: 1 },
+    scroll: { flexGrow: 1, paddingHorizontal: 28 },
+    heroSection: { alignItems: "center", paddingTop: 48, paddingBottom: 48, gap: 12 },
     logoMark: {
       width: 72,
       height: 72,
@@ -193,36 +239,18 @@ function styles(colors: ReturnType<typeof useColors>) {
       justifyContent: "center",
       marginBottom: 8,
     },
-    logoMarkText: {
-      fontSize: 36,
-      fontFamily: "Inter_700Bold",
-      color: "#FFFFFF",
-    },
-    appName: {
-      fontSize: 36,
-      fontFamily: "Inter_700Bold",
-      letterSpacing: -0.5,
-    },
+    logoMarkText: { fontSize: 36, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    appName: { fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
     tagline: {
       fontSize: 17,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       lineHeight: 26,
     },
-    welcomeActions: {
-      gap: 12,
-    },
-    form: {
-      gap: 16,
-    },
-    inputGroup: {
-      gap: 6,
-    },
-    label: {
-      fontSize: 13,
-      fontFamily: "Inter_500Medium",
-      letterSpacing: 0.3,
-    },
+    welcomeActions: { gap: 12 },
+    form: { gap: 16 },
+    inputGroup: { gap: 6 },
+    label: { fontSize: 13, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
     input: {
       height: 52,
       borderRadius: 14,
@@ -231,16 +259,8 @@ function styles(colors: ReturnType<typeof useColors>) {
       fontSize: 16,
       fontFamily: "Inter_400Regular",
     },
-    primaryBtn: {
-      height: 56,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    primaryBtnText: {
-      fontSize: 17,
-      fontFamily: "Inter_600SemiBold",
-    },
+    primaryBtn: { height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+    primaryBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
     secondaryBtn: {
       height: 56,
       borderRadius: 16,
@@ -248,15 +268,8 @@ function styles(colors: ReturnType<typeof useColors>) {
       alignItems: "center",
       justifyContent: "center",
     },
-    secondaryBtnText: {
-      fontSize: 17,
-      fontFamily: "Inter_600SemiBold",
-    },
-    errorText: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-    },
+    secondaryBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+    errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
     switchText: {
       fontSize: 15,
       fontFamily: "Inter_400Regular",

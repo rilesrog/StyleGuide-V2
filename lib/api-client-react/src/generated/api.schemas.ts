@@ -12,10 +12,12 @@ export interface HealthStatus {
 export interface RegisterRequest {
   name: string;
   email: string;
+  password: string;
 }
 
 export interface LoginRequest {
   email: string;
+  password: string;
 }
 
 export interface AuthResponse {
@@ -49,6 +51,10 @@ export interface SwipeRequest {
 export interface SwipeResponse {
   success: boolean;
   swipeId: number;
+}
+
+export interface ResetSwipesResponse {
+  success: boolean;
 }
 
 export interface StyleTagWeight {

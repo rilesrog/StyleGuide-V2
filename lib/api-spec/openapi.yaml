@@ -58,7 +58,7 @@ paths:
     post:
       operationId: loginUser
       tags: [auth]
-      summary: Login with email
+      summary: Login with email and password
       requestBody:
         required: true
         content:
@@ -72,8 +72,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
-        "404":
-          description: User not found
+        "401":
+          description: Invalid credentials
           content:
             application/json:
               schema:
@@ -125,6 +125,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SwipeResponse"
+    delete:
+      operationId: resetSwipes
+      tags: [style]
+      summary: Reset all swipes for the current user (retake quiz)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: All swipes deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetSwipesResponse"
 
   /style-profile:
     get:
@@ -178,17 +191,23 @@ components:
           type: string
         email:
           type: string
+        password:
+          type: string
       required:
         - name
         - email
+        - password
 
     LoginRequest:
       type: object
       properties:
         email:
           type: string
+        password:
+          type: string
       required:
         - email
+        - password
 
     AuthResponse:
       type: object
@@ -267,6 +286,14 @@ components:
       required:
         - success
         - swipeId
+
+    ResetSwipesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
 
     StyleTagWeight:
       type: object

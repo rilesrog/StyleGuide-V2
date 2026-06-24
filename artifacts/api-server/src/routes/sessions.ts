@@ -223,4 +223,125 @@ router.get("/sessions/:id/matches", requireAuth, async (req, res) => {
   res.json({ products, count: products.length });
 });
 
+// GET /sessions/:id/registry — identical to /matches; alias for registry mode clarity
+router.get("/sessions/:id/registry", requireAuth, async (req, res) => {
+  const sessionId = parseInt(req.params.id, 10);
+  const userId = req.userId!;
+
+  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  if (!rows.length) { res.status(404).json({ error: "Session not found" }); return; }
+  const session = rows[0];
+  if (session.createdBy !== userId && session.partnerId !== userId) {
+    res.status(403).json({ error: "Not a member of this session" }); return;
+  }
+  if (!session.partnerId) { res.json({ products: [], count: 0, pending: [] }); return; }
+
+  const [creatorSwipes, partnerSwipes] = await Promise.all([
+    db.select({ productId: productSwipesTable.productId })
+      .from(productSwipesTable)
+      .where(and(eq(productSwipesTable.userId, session.createdBy), eq(productSwipesTable.sessionId, sessionId), eq(productSwipesTable.liked, true))),
+    db.select({ productId: productSwipesTable.productId })
+      .from(productSwipesTable)
+      .where(and(eq(productSwipesTable.userId, session.partnerId), eq(productSwipesTable.sessionId, sessionId), eq(productSwipesTable.liked, true))),
+  ]);
+
+  const creatorSet = new Set(creatorSwipes.map((r) => r.productId));
+  const partnerSet = new Set(partnerSwipes.map((r) => r.productId));
+
+  const matchIds = [...creatorSet].filter((id) => partnerSet.has(id));
+
+  // Pending: caller liked but partner has not liked yet
+  const callerLikedSet = userId === session.createdBy ? creatorSet : partnerSet;
+  const otherLikedSet = userId === session.createdBy ? partnerSet : creatorSet;
+  const pendingIds = [...callerLikedSet].filter((id) => !otherLikedSet.has(id));
+
+  const [matchProducts, pendingProducts] = await Promise.all([
+    matchIds.length > 0
+      ? db.select().from(productsTable).where(inArray(productsTable.id, matchIds))
+      : Promise.resolve([]),
+    pendingIds.length > 0
+      ? db.select().from(productsTable).where(inArray(productsTable.id, pendingIds))
+      : Promise.resolve([]),
+  ]);
+
+  res.json({ products: matchProducts, count: matchProducts.length, pending: pendingProducts });
+});
+
+// PATCH /sessions/:id/mode — set session mode (decoration | registry)
+router.patch("/sessions/:id/mode", requireAuth, async (req, res) => {
+  const sessionId = parseInt(req.params.id, 10);
+  const userId = req.userId!;
+  const { mode } = req.body as { mode?: string };
+
+  if (!mode || !["decoration", "registry"].includes(mode)) {
+    res.status(400).json({ error: "mode must be decoration or registry" }); return;
+  }
+
+  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  if (!rows.length) { res.status(404).json({ error: "Session not found" }); return; }
+  const session = rows[0];
+  if (session.createdBy !== userId && session.partnerId !== userId) {
+    res.status(403).json({ error: "Not a member of this session" }); return;
+  }
+
+  await db.update(sessionsTable).set({ mode }).where(eq(sessionsTable.id, sessionId));
+  res.json({ success: true, mode });
+});
+
+// GET /sessions/:id/registry/export — plain-text export of mutual registry items
+router.get("/sessions/:id/registry/export", requireAuth, async (req, res) => {
+  const sessionId = parseInt(req.params.id, 10);
+  const userId = req.userId!;
+
+  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  if (!rows.length) { res.status(404).json({ error: "Session not found" }); return; }
+  const session = rows[0];
+  if (session.createdBy !== userId && session.partnerId !== userId) {
+    res.status(403).json({ error: "Not a member of this session" }); return;
+  }
+
+  const [creator] = await db
+    .select({ name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.id, session.createdBy));
+  let partnerName = "Partner";
+  if (session.partnerId) {
+    const [p] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, session.partnerId));
+    if (p) partnerName = p.name;
+  }
+
+  // Get matched products
+  const [creatorSwipes, partnerSwipes] = await Promise.all([
+    db.select({ productId: productSwipesTable.productId }).from(productSwipesTable)
+      .where(and(eq(productSwipesTable.userId, session.createdBy), eq(productSwipesTable.sessionId, sessionId), eq(productSwipesTable.liked, true))),
+    session.partnerId
+      ? db.select({ productId: productSwipesTable.productId }).from(productSwipesTable)
+          .where(and(eq(productSwipesTable.userId, session.partnerId), eq(productSwipesTable.sessionId, sessionId), eq(productSwipesTable.liked, true)))
+      : Promise.resolve([]),
+  ]);
+
+  const creatorSet = new Set(creatorSwipes.map((r) => r.productId));
+  const matchIds = partnerSwipes.map((r) => r.productId).filter((id) => creatorSet.has(id));
+  const products = matchIds.length > 0
+    ? await db.select().from(productsTable).where(inArray(productsTable.id, matchIds))
+    : [];
+
+  const lines = [
+    `StyleSwipe Wedding Registry`,
+    `Partners: ${creator?.name ?? "User"} + ${partnerName}`,
+    `Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    ``,
+    `Registry Items (${products.length}):`,
+    ``,
+    ...products.map((p, i) =>
+      `${i + 1}. ${p.name} — $${p.price.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}${p.affiliateUrl ? `\n   ${p.affiliateUrl}` : ""}`
+    ),
+    ``,
+    `Generated by StyleSwipe`,
+  ];
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(lines.join("\n"));
+});
+
 export default router;

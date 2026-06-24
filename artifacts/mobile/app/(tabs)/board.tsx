@@ -3,6 +3,9 @@ import {
   useGetStyleProfile,
   useResetSwipes,
   useGetProductBoard,
+  useGetRooms,
+  useAssignProductToRoom,
+  useRemoveProductFromRoom,
 } from "@workspace/api-client-react";
 import React, { useState } from "react";
 import {
@@ -22,6 +25,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { useMode } from "@/context/ModeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -29,6 +33,16 @@ import * as Haptics from "expo-haptics";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - 32 - 8) / 2;
+
+const PRESET_ROOMS = [
+  "Living Room",
+  "Bedroom",
+  "Kitchen",
+  "Bathroom",
+  "Dining Room",
+  "Office",
+  "Other",
+];
 
 type Product = {
   id: number;
@@ -45,11 +59,14 @@ export default function BoardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useUser();
+  const { isDecoration } = useMode();
   const queryClient = useQueryClient();
   const router = useRouter();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
   const [activeTab, setActiveTab] = useState<"photos" | "products">("photos");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [roomModalProduct, setRoomModalProduct] = useState<Product | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string>("All");
 
   const { data: boardData, isLoading: boardLoading } = useGetStyleBoard({
     query: { enabled: isLoggedIn, staleTime: 0 },
@@ -63,6 +80,12 @@ export default function BoardScreen() {
     query: { enabled: isLoggedIn, staleTime: 0 },
   });
 
+  const { data: roomsData } = useGetRooms({
+    query: { enabled: isLoggedIn && isDecoration, staleTime: 0 },
+  });
+
+  const assignToRoom = useAssignProductToRoom();
+  const removeFromRoom = useRemoveProductFromRoom();
   const resetSwipesMutation = useResetSwipes();
 
   const photos = (boardData?.photos ?? []) as Array<{ id: number; url: string; tags: string[] }>;
@@ -73,6 +96,45 @@ export default function BoardScreen() {
     score: number;
     count: number;
   }>;
+
+  // Build room assignment map: productId → Set<room>
+  const rooms = (roomsData?.rooms ?? []) as Array<{
+    name: string;
+    items: Array<{ id: number; product: Product }>;
+  }>;
+  const presetRooms = (roomsData?.presetRooms ?? PRESET_ROOMS) as string[];
+
+  const productRoomMap = React.useMemo(() => {
+    const map = new Map<number, Set<string>>();
+    for (const roomGroup of rooms) {
+      for (const item of roomGroup.items) {
+        if (!map.has(item.product.id)) map.set(item.product.id, new Set());
+        map.get(item.product.id)!.add(roomGroup.name);
+      }
+    }
+    return map;
+  }, [rooms]);
+
+  // Determine all existing room names (preset + assigned)
+  const assignedRoomNames = rooms.map((r) => r.name);
+  const allRoomNames = ["All", ...Array.from(new Set([...presetRooms, ...assignedRoomNames]))];
+
+  // Filter products by selected room (decoration mode)
+  const filteredProducts = React.useMemo(() => {
+    if (!isDecoration || selectedRoom === "All") return products;
+    return products.filter((p) => productRoomMap.get(p.id)?.has(selectedRoom));
+  }, [products, selectedRoom, productRoomMap, isDecoration]);
+
+  const handleAssignRoom = async (product: Product, room: string) => {
+    const alreadyAssigned = productRoomMap.get(product.id)?.has(room);
+    if (alreadyAssigned) {
+      await removeFromRoom.mutateAsync({ data: { productId: product.id, room } });
+    } else {
+      await assignToRoom.mutateAsync({ data: { productId: product.id, room } });
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
 
   const handleRetakeQuiz = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -177,11 +239,44 @@ export default function BoardScreen() {
           </Text>
         </Pressable>
       </View>
+
+      {/* Room filter strip — shown in decoration mode on products tab */}
+      {isDecoration && activeTab === "products" && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.roomFilterContent}
+          style={s.roomFilter}
+        >
+          {allRoomNames.map((room) => (
+            <Pressable
+              key={room}
+              style={[
+                s.roomChip,
+                {
+                  backgroundColor: selectedRoom === room ? colors.primary : colors.card,
+                  borderColor: selectedRoom === room ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={() => setSelectedRoom(room)}
+            >
+              <Text
+                style={[
+                  s.roomChipText,
+                  { color: selectedRoom === room ? colors.primaryForeground : colors.foreground },
+                ]}
+              >
+                {room}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 
   const photoData = activeTab === "photos" ? photos : [];
-  const productData = activeTab === "products" ? products : [];
+  const productData = activeTab === "products" ? filteredProducts : [];
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -239,33 +334,73 @@ export default function BoardScreen() {
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             <View style={s.emptyState}>
-              <Ionicons name="bag-outline" size={48} color={colors.mutedForeground} />
-              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No products saved yet</Text>
-              <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
-                Swipe right on products you love in the Shop tab
-              </Text>
+              {selectedRoom !== "All" && isDecoration ? (
+                <>
+                  <Ionicons name="cube-outline" size={48} color={colors.mutedForeground} />
+                  <Text style={[s.emptyTitle, { color: colors.foreground }]}>
+                    No products in {selectedRoom}
+                  </Text>
+                  <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
+                    Save products and assign them to this room.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="bag-outline" size={48} color={colors.mutedForeground} />
+                  <Text style={[s.emptyTitle, { color: colors.foreground }]}>No products saved yet</Text>
+                  <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
+                    Swipe right on products you love in the Shop tab
+                  </Text>
+                </>
+              )}
             </View>
           }
-          renderItem={({ item }) => (
-            <Pressable
-              style={[s.productCard, { backgroundColor: colors.card }]}
-              onPress={() => setSelectedProduct(item)}
-            >
-              <Image source={{ uri: item.url }} style={s.productImage} resizeMode="cover" />
-              <View style={s.productInfo}>
-                <Text style={[s.productName, { color: colors.foreground }]} numberOfLines={2}>
-                  {item.name}
-                </Text>
-                <Text style={[s.productPrice, { color: colors.primary }]}>
-                  {displayPrice(item.price)}
-                </Text>
-              </View>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const assignedRooms = productRoomMap.get(item.id);
+            const firstRoom = assignedRooms ? [...assignedRooms][0] : null;
+            return (
+              <Pressable
+                style={[s.productCard, { backgroundColor: colors.card }]}
+                onPress={() => setSelectedProduct(item)}
+              >
+                <Image source={{ uri: item.url }} style={s.productImage} resizeMode="cover" />
+                {isDecoration && firstRoom && (
+                  <View style={[s.roomBadge, { backgroundColor: colors.primary + "EE" }]}>
+                    <Text style={[s.roomBadgeText, { color: colors.primaryForeground }]} numberOfLines={1}>
+                      {firstRoom}
+                    </Text>
+                  </View>
+                )}
+                <View style={s.productInfo}>
+                  <Text style={[s.productName, { color: colors.foreground }]} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  <View style={s.productFooter}>
+                    <Text style={[s.productPrice, { color: colors.primary }]}>
+                      {displayPrice(item.price)}
+                    </Text>
+                    {isDecoration && (
+                      <Pressable
+                        style={[s.roomBtn, { backgroundColor: colors.muted }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setRoomModalProduct(item);
+                        }}
+                      >
+                        <Ionicons name="add-circle-outline" size={14} color={colors.mutedForeground} />
+                        <Text style={[s.roomBtnText, { color: colors.mutedForeground }]}>Room</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }}
           showsVerticalScrollIndicator={false}
         />
       )}
 
+      {/* Product detail modal */}
       <Modal
         visible={!!selectedProduct}
         animationType="slide"
@@ -317,6 +452,20 @@ export default function BoardScreen() {
                         </View>
                       ))}
                   </View>
+                  {isDecoration && (
+                    <Pressable
+                      style={[s.viewProductBtn, { backgroundColor: colors.secondary }]}
+                      onPress={() => {
+                        setSelectedProduct(null);
+                        setRoomModalProduct(selectedProduct);
+                      }}
+                    >
+                      <Ionicons name="home-outline" size={18} color={colors.secondaryForeground} />
+                      <Text style={[s.viewProductBtnText, { color: colors.secondaryForeground }]}>
+                        Assign to Room
+                      </Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     style={[s.viewProductBtn, { backgroundColor: colors.primary }]}
                     onPress={() => setSelectedProduct(null)}
@@ -329,6 +478,66 @@ export default function BoardScreen() {
                 </View>
               </ScrollView>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Room assignment modal */}
+      <Modal
+        visible={!!roomModalProduct}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setRoomModalProduct(null)}
+      >
+        <Pressable style={s.modalBackdrop} onPress={() => setRoomModalProduct(null)}>
+          <Pressable style={[s.modalSheet, { backgroundColor: colors.card }]} onPress={() => {}}>
+            <View style={[s.modalHandle, { backgroundColor: colors.border }]} />
+            <View style={s.roomModalContent}>
+              <Text style={[s.roomModalTitle, { color: colors.foreground }]}>Assign to Room</Text>
+              {roomModalProduct && (
+                <Text style={[s.roomModalSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {roomModalProduct.name}
+                </Text>
+              )}
+              <ScrollView style={s.roomList} showsVerticalScrollIndicator={false}>
+                {presetRooms.map((room) => {
+                  const assigned = roomModalProduct
+                    ? productRoomMap.get(roomModalProduct.id)?.has(room)
+                    : false;
+                  return (
+                    <Pressable
+                      key={room}
+                      style={[
+                        s.roomListItem,
+                        {
+                          backgroundColor: assigned ? colors.primary + "15" : "transparent",
+                          borderColor: assigned ? colors.primary + "40" : colors.border,
+                        },
+                      ]}
+                      onPress={() => roomModalProduct && handleAssignRoom(roomModalProduct, room)}
+                    >
+                      <Text
+                        style={[
+                          s.roomListItemText,
+                          { color: assigned ? colors.primary : colors.foreground },
+                        ]}
+                      >
+                        {room}
+                      </Text>
+                      {assigned && (
+                        <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                style={[s.doneBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setRoomModalProduct(null)}
+              >
+                <Text style={[s.doneBtnText, { color: colors.primaryForeground }]}>Done</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -391,6 +600,20 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       paddingVertical: 12,
     },
     segmentText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    roomFilter: { marginBottom: 8 },
+    roomFilterContent: {
+      paddingHorizontal: 16,
+      gap: 8,
+      flexDirection: "row",
+      paddingBottom: 8,
+    },
+    roomChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    roomChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
     emptyState: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 32, gap: 12 },
     emptyTitle: { fontSize: 20, fontFamily: "Inter_600SemiBold", textAlign: "center" },
     emptySubtitle: {
@@ -423,16 +646,40 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       overflow: "hidden",
     },
     productImage: { width: "100%", height: CARD_WIDTH * 1.1 },
+    roomBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      maxWidth: CARD_WIDTH - 16,
+    },
+    roomBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
     productInfo: { padding: 10, gap: 4 },
     productName: {
       fontSize: 13,
       fontFamily: "Inter_500Medium",
       lineHeight: 18,
     },
+    productFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
     productPrice: {
       fontSize: 14,
       fontFamily: "Inter_700Bold",
     },
+    roomBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    roomBtnText: { fontSize: 11, fontFamily: "Inter_500Medium" },
     modalBackdrop: {
       flex: 1,
       justifyContent: "flex-end",
@@ -499,9 +746,47 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       gap: 8,
       paddingVertical: 14,
       borderRadius: 16,
-      marginTop: 8,
+      marginTop: 4,
     },
     viewProductBtnText: {
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+    },
+    roomModalContent: {
+      padding: 24,
+      gap: 12,
+      maxHeight: 480,
+    },
+    roomModalTitle: {
+      fontSize: 20,
+      fontFamily: "Inter_700Bold",
+    },
+    roomModalSubtitle: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      marginTop: -4,
+    },
+    roomList: { maxHeight: 320 },
+    roomListItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: 8,
+    },
+    roomListItemText: {
+      fontSize: 15,
+      fontFamily: "Inter_500Medium",
+    },
+    doneBtn: {
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: "center",
+    },
+    doneBtnText: {
       fontSize: 16,
       fontFamily: "Inter_600SemiBold",
     },

@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   token: text("token").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   passwordSalt: text("password_salt").notNull(),
+  mode: text("mode").default("decoration"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -93,3 +94,15 @@ export const productSwipesTable = pgTable("product_swipes", {
 export const insertProductSwipeSchema = createInsertSchema(productSwipesTable).omit({ id: true, createdAt: true });
 export type InsertProductSwipe = z.infer<typeof insertProductSwipeSchema>;
 export type ProductSwipe = typeof productSwipesTable.$inferSelect;
+
+export const roomAssignmentsTable = pgTable("room_assignments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  productId: integer("product_id").notNull().references(() => productsTable.id),
+  room: text("room").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRoomAssignmentSchema = createInsertSchema(roomAssignmentsTable).omit({ id: true, createdAt: true });
+export type InsertRoomAssignment = z.infer<typeof insertRoomAssignmentSchema>;
+export type RoomAssignment = typeof roomAssignmentsTable.$inferSelect;

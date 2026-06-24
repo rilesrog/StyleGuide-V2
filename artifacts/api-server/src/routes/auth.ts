@@ -3,6 +3,7 @@ import { randomBytes, pbkdf2Sync } from "crypto";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "../lib/auth";
 
 const router = Router();
 
@@ -87,6 +88,33 @@ router.post("/auth/login", async (req, res) => {
   }
 
   res.json({ userId: user.id, name: user.name, email: user.email, token: user.token });
+});
+
+// GET /users/me — return current user info including mode
+router.get("/users/me", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  const rows = await db
+    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, mode: usersTable.mode })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!rows.length) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(rows[0]);
+});
+
+// PATCH /users/me/mode — update current user's active mode
+router.patch("/users/me/mode", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  const { mode } = req.body as { mode?: string };
+  if (!mode || !["decoration", "registry"].includes(mode)) {
+    res.status(400).json({ error: "mode must be decoration or registry" });
+    return;
+  }
+  await db.update(usersTable).set({ mode }).where(eq(usersTable.id, userId));
+  res.json({ success: true, mode });
 });
 
 export default router;

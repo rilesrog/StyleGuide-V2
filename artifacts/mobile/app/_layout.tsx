@@ -17,6 +17,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UserProvider } from "@/context/UserContext";
 import { SessionProvider } from "@/context/SessionContext";
+import { ModeProvider } from "@/context/ModeContext";
 
 // Set API base URL at module level (before any component mounts)
 if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -62,9 +63,11 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <UserProvider>
-                <SessionProvider>
-                  <RootLayoutNav />
-                </SessionProvider>
+                <ModeProvider>
+                  <SessionProvider>
+                    <RootLayoutNav />
+                  </SessionProvider>
+                </ModeProvider>
               </UserProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

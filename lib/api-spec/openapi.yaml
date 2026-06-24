@@ -18,6 +18,8 @@ tags:
     description: Product feed and board operations
   - name: sessions
     description: Shared session operations
+  - name: rooms
+    description: Room assignment operations for Home Decoration mode
 paths:
   /healthz:
     get:
@@ -357,6 +359,171 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SessionMatchesResponse"
+
+  /sessions/{id}/mode:
+    patch:
+      operationId: updateSessionMode
+      tags: [sessions]
+      summary: Set the session mode (decoration or registry)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModeUpdateRequest"
+      responses:
+        "200":
+          description: Mode updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModeUpdateResponse"
+
+  /sessions/{id}/registry:
+    get:
+      operationId: getSessionRegistry
+      tags: [sessions]
+      summary: Get registry items (mutual likes) and pending items (one-sided likes)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Registry products with pending list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRegistryResponse"
+
+  /sessions/{id}/registry/export:
+    get:
+      operationId: exportSessionRegistry
+      tags: [sessions]
+      summary: Export registry as a plain-text list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Plain text registry export
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user info including active mode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMeResponse"
+
+  /users/me/mode:
+    patch:
+      operationId: updateUserMode
+      tags: [auth]
+      summary: Update current user's active mode
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModeUpdateRequest"
+      responses:
+        "200":
+          description: Mode updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModeUpdateResponse"
+
+  /rooms:
+    get:
+      operationId: getRooms
+      tags: [rooms]
+      summary: Get all room assignments for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Room assignments grouped by room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomsResponse"
+
+  /rooms/assign:
+    post:
+      operationId: assignProductToRoom
+      tags: [rooms]
+      summary: Assign a liked product to a room
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomAssignRequest"
+      responses:
+        "201":
+          description: Product assigned to room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomAssignResponse"
+    delete:
+      operationId: removeProductFromRoom
+      tags: [rooms]
+      summary: Remove a product from a room
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomAssignRequest"
+      responses:
+        "200":
+          description: Product removed from room
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
 
 components:
   securitySchemes:
@@ -705,3 +872,117 @@ components:
       required:
         - products
         - count
+
+    SessionRegistryResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        count:
+          type: integer
+        pending:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+      required:
+        - products
+        - count
+        - pending
+
+    ModeUpdateRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+      required:
+        - mode
+
+    ModeUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        mode:
+          type: string
+      required:
+        - success
+        - mode
+
+    UserMeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        mode:
+          type: string
+      required:
+        - id
+        - name
+        - email
+
+    RoomProductItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          $ref: "#/components/schemas/Product"
+      required:
+        - id
+        - product
+
+    RoomGroup:
+      type: object
+      properties:
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoomProductItem"
+      required:
+        - name
+        - items
+
+    RoomsResponse:
+      type: object
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoomGroup"
+        presetRooms:
+          type: array
+          items:
+            type: string
+      required:
+        - rooms
+        - presetRooms
+
+    RoomAssignRequest:
+      type: object
+      properties:
+        productId:
+          type: integer
+        room:
+          type: string
+      required:
+        - productId
+        - room
+
+    RoomAssignResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        id:
+          type: integer
+      required:
+        - success
+        - id

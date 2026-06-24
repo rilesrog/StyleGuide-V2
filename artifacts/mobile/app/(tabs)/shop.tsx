@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
+import { useMode } from "@/context/ModeContext";
 import { ProductCard } from "@/components/ProductCard";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -38,6 +39,7 @@ export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useUser();
   const { session, isActive } = useSession();
+  const { isRegistry } = useMode();
   const queryClient = useQueryClient();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
@@ -209,7 +211,9 @@ export default function ShopScreen() {
           <Ionicons name="arrow-back-outline" size={16} color={colors.mutedForeground} />
           <Text style={[styles.hintText, { color: colors.mutedForeground }]}>skip</Text>
           <View style={styles.hintSpacer} />
-          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>save</Text>
+          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+            {isRegistry ? "add to registry" : "save"}
+          </Text>
           <Ionicons name="arrow-forward-outline" size={16} color={colors.mutedForeground} />
         </View>
       )}

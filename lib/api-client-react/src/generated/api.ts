@@ -28,19 +28,27 @@ import type {
   ImportProductItem,
   ImportProductsResponse,
   LoginRequest,
+  ModeUpdateRequest,
+  ModeUpdateResponse,
   ProductBoardResponse,
   ProductFeedResponse,
   ProductSwipeRequest,
   ProductSwipeResponse,
   RegisterRequest,
+  RemoveProductFromRoom200,
   ResetSwipesResponse,
+  RoomAssignRequest,
+  RoomAssignResponse,
+  RoomsResponse,
   SessionMatchesResponse,
+  SessionRegistryResponse,
   SessionResponse,
   StyleBoardResponse,
   StylePhotosResponse,
   StyleProfileResponse,
   SwipeRequest,
-  SwipeResponse
+  SwipeResponse,
+  UserMeResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1257,4 +1265,597 @@ export function useGetSessionMatches<TData = Awaited<ReturnType<typeof getSessio
 
 
 
+
+export const getUpdateSessionModeUrl = (id: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/mode`
+}
+
+/**
+ * @summary Set the session mode (decoration or registry)
+ */
+export const updateSessionMode = async (id: number,
+    modeUpdateRequest: ModeUpdateRequest, options?: RequestInit): Promise<ModeUpdateResponse> => {
+
+  return customFetch<ModeUpdateResponse>(getUpdateSessionModeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      modeUpdateRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateSessionModeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSessionMode>>, TError,{id: number;data: BodyType<ModeUpdateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSessionMode>>, TError,{id: number;data: BodyType<ModeUpdateRequest>}, TContext> => {
+
+const mutationKey = ['updateSessionMode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSessionMode>>, {id: number;data: BodyType<ModeUpdateRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSessionMode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSessionModeMutationResult = NonNullable<Awaited<ReturnType<typeof updateSessionMode>>>
+    export type UpdateSessionModeMutationBody = BodyType<ModeUpdateRequest>
+    export type UpdateSessionModeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set the session mode (decoration or registry)
+ */
+export const useUpdateSessionMode = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSessionMode>>, TError,{id: number;data: BodyType<ModeUpdateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSessionMode>>,
+        TError,
+        {id: number;data: BodyType<ModeUpdateRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateSessionModeMutationOptions(options));
+    }
+
+export const getGetSessionRegistryUrl = (id: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/registry`
+}
+
+/**
+ * @summary Get registry items (mutual likes) and pending items (one-sided likes)
+ */
+export const getSessionRegistry = async (id: number, options?: RequestInit): Promise<SessionRegistryResponse> => {
+
+  return customFetch<SessionRegistryResponse>(getGetSessionRegistryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSessionRegistryQueryKey = (id: number,) => {
+    return [
+    `/api/sessions/${id}/registry`
+    ] as const;
+    }
+
+
+export const getGetSessionRegistryQueryOptions = <TData = Awaited<ReturnType<typeof getSessionRegistry>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionRegistry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionRegistryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionRegistry>>> = ({ signal }) => getSessionRegistry(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionRegistry>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSessionRegistryQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionRegistry>>>
+export type GetSessionRegistryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get registry items (mutual likes) and pending items (one-sided likes)
+ */
+
+export function useGetSessionRegistry<TData = Awaited<ReturnType<typeof getSessionRegistry>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionRegistry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSessionRegistryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getExportSessionRegistryUrl = (id: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/registry/export`
+}
+
+/**
+ * @summary Export registry as a plain-text list
+ */
+export const exportSessionRegistry = async (id: number, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportSessionRegistryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportSessionRegistryQueryKey = (id: number,) => {
+    return [
+    `/api/sessions/${id}/registry/export`
+    ] as const;
+    }
+
+
+export const getExportSessionRegistryQueryOptions = <TData = Awaited<ReturnType<typeof exportSessionRegistry>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportSessionRegistry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportSessionRegistryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportSessionRegistry>>> = ({ signal }) => exportSessionRegistry(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportSessionRegistry>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportSessionRegistryQueryResult = NonNullable<Awaited<ReturnType<typeof exportSessionRegistry>>>
+export type ExportSessionRegistryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export registry as a plain-text list
+ */
+
+export function useExportSessionRegistry<TData = Awaited<ReturnType<typeof exportSessionRegistry>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportSessionRegistry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportSessionRegistryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCurrentUserUrl = () => {
+
+
+
+
+  return `/api/users/me`
+}
+
+/**
+ * @summary Get current user info including active mode
+ */
+export const getCurrentUser = async ( options?: RequestInit): Promise<UserMeResponse> => {
+
+  return customFetch<UserMeResponse>(getGetCurrentUserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentUserQueryKey = () => {
+    return [
+    `/api/users/me`
+    ] as const;
+    }
+
+
+export const getGetCurrentUserQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({ signal }) => getCurrentUser({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentUserQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
+export type GetCurrentUserQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get current user info including active mode
+ */
+
+export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentUserQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateUserModeUrl = () => {
+
+
+
+
+  return `/api/users/me/mode`
+}
+
+/**
+ * @summary Update current user's active mode
+ */
+export const updateUserMode = async (modeUpdateRequest: ModeUpdateRequest, options?: RequestInit): Promise<ModeUpdateResponse> => {
+
+  return customFetch<ModeUpdateResponse>(getUpdateUserModeUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      modeUpdateRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateUserModeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserMode>>, TError,{data: BodyType<ModeUpdateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUserMode>>, TError,{data: BodyType<ModeUpdateRequest>}, TContext> => {
+
+const mutationKey = ['updateUserMode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUserMode>>, {data: BodyType<ModeUpdateRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateUserMode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserModeMutationResult = NonNullable<Awaited<ReturnType<typeof updateUserMode>>>
+    export type UpdateUserModeMutationBody = BodyType<ModeUpdateRequest>
+    export type UpdateUserModeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update current user's active mode
+ */
+export const useUpdateUserMode = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserMode>>, TError,{data: BodyType<ModeUpdateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUserMode>>,
+        TError,
+        {data: BodyType<ModeUpdateRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserModeMutationOptions(options));
+    }
+
+export const getGetRoomsUrl = () => {
+
+
+
+
+  return `/api/rooms`
+}
+
+/**
+ * @summary Get all room assignments for the current user
+ */
+export const getRooms = async ( options?: RequestInit): Promise<RoomsResponse> => {
+
+  return customFetch<RoomsResponse>(getGetRoomsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRoomsQueryKey = () => {
+    return [
+    `/api/rooms`
+    ] as const;
+    }
+
+
+export const getGetRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getRooms>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRoomsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRooms>>> = ({ signal }) => getRooms({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRoomsQueryResult = NonNullable<Awaited<ReturnType<typeof getRooms>>>
+export type GetRoomsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all room assignments for the current user
+ */
+
+export function useGetRooms<TData = Awaited<ReturnType<typeof getRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRoomsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAssignProductToRoomUrl = () => {
+
+
+
+
+  return `/api/rooms/assign`
+}
+
+/**
+ * @summary Assign a liked product to a room
+ */
+export const assignProductToRoom = async (roomAssignRequest: RoomAssignRequest, options?: RequestInit): Promise<RoomAssignResponse> => {
+
+  return customFetch<RoomAssignResponse>(getAssignProductToRoomUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      roomAssignRequest,)
+  }
+);}
+
+
+
+
+export const getAssignProductToRoomMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignProductToRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignProductToRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext> => {
+
+const mutationKey = ['assignProductToRoom'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignProductToRoom>>, {data: BodyType<RoomAssignRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assignProductToRoom(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignProductToRoomMutationResult = NonNullable<Awaited<ReturnType<typeof assignProductToRoom>>>
+    export type AssignProductToRoomMutationBody = BodyType<RoomAssignRequest>
+    export type AssignProductToRoomMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Assign a liked product to a room
+ */
+export const useAssignProductToRoom = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignProductToRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignProductToRoom>>,
+        TError,
+        {data: BodyType<RoomAssignRequest>},
+        TContext
+      > => {
+      return useMutation(getAssignProductToRoomMutationOptions(options));
+    }
+
+export const getRemoveProductFromRoomUrl = () => {
+
+
+
+
+  return `/api/rooms/assign`
+}
+
+/**
+ * @summary Remove a product from a room
+ */
+export const removeProductFromRoom = async (roomAssignRequest: RoomAssignRequest, options?: RequestInit): Promise<RemoveProductFromRoom200> => {
+
+  return customFetch<RemoveProductFromRoom200>(getRemoveProductFromRoomUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      roomAssignRequest,)
+  }
+);}
+
+
+
+
+export const getRemoveProductFromRoomMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeProductFromRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeProductFromRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext> => {
+
+const mutationKey = ['removeProductFromRoom'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeProductFromRoom>>, {data: BodyType<RoomAssignRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  removeProductFromRoom(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveProductFromRoomMutationResult = NonNullable<Awaited<ReturnType<typeof removeProductFromRoom>>>
+    export type RemoveProductFromRoomMutationBody = BodyType<RoomAssignRequest>
+    export type RemoveProductFromRoomMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a product from a room
+ */
+export const useRemoveProductFromRoom = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeProductFromRoom>>, TError,{data: BodyType<RoomAssignRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeProductFromRoom>>,
+        TError,
+        {data: BodyType<RoomAssignRequest>},
+        TContext
+      > => {
+      return useMutation(getRemoveProductFromRoomMutationOptions(options));
+    }
 

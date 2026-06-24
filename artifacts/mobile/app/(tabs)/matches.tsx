@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -16,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
+import { useMode } from "@/context/ModeContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_GAP = 12;
@@ -33,6 +36,7 @@ type MatchedProduct = {
   tags: string[];
   category: string;
   brand?: string | null;
+  affiliateUrl?: string | null;
 };
 
 export default function MatchesScreen() {
@@ -41,38 +45,81 @@ export default function MatchesScreen() {
   const router = useRouter();
   const { token } = useUser();
   const { session, isActive } = useSession();
+  const { isRegistry } = useMode();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
   const [matches, setMatches] = useState<MatchedProduct[]>([]);
+  const [pending, setPending] = useState<MatchedProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [prevMatchCount, setPrevMatchCount] = useState(0);
+  const celebrationAnim = React.useRef(new Animated.Value(0)).current;
 
-  const fetchMatches = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!session || !isActive || !token) return;
     try {
-      const resp = await fetch(`${API_BASE}/api/sessions/${session.id}/matches`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        setMatches((data as { products: MatchedProduct[] }).products ?? []);
+      if (isRegistry) {
+        const resp = await fetch(`${API_BASE}/api/sessions/${session.id}/registry`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const newMatches = (data as { products: MatchedProduct[]; pending: MatchedProduct[] }).products ?? [];
+          const newPending = (data as { products: MatchedProduct[]; pending: MatchedProduct[] }).pending ?? [];
+          // Trigger celebration if new matches appeared
+          if (newMatches.length > prevMatchCount && prevMatchCount > 0) {
+            Animated.sequence([
+              Animated.timing(celebrationAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+              Animated.timing(celebrationAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+            ]).start();
+          }
+          setPrevMatchCount(newMatches.length);
+          setMatches(newMatches);
+          setPending(newPending);
+        }
+      } else {
+        const resp = await fetch(`${API_BASE}/api/sessions/${session.id}/matches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          setMatches((data as { products: MatchedProduct[] }).products ?? []);
+          setPending([]);
+        }
       }
     } catch {}
-  }, [session?.id, isActive, token]);
+  }, [session?.id, isActive, token, isRegistry, prevMatchCount]);
 
-  // Reset matches when session changes; poll every 5s when active
+  // Reset and poll when session or mode changes
   useEffect(() => {
     if (!isActive) {
       setMatches([]);
+      setPending([]);
+      setPrevMatchCount(0);
       return;
     }
     setLoading(true);
-    fetchMatches().finally(() => setLoading(false));
-
-    const interval = setInterval(fetchMatches, 5000);
+    fetchData().finally(() => setLoading(false));
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [isActive, fetchMatches]);
+  }, [isActive, fetchData]);
+
+  const handleShareRegistry = async () => {
+    if (!session) return;
+    try {
+      // Fetch the plain-text export
+      const resp = await fetch(`${API_BASE}/api/sessions/${session.id}/registry/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        await Share.share({ message: text, title: "Wedding Registry" });
+      }
+    } catch {}
+  };
 
   const s = stylesheet(colors);
+
+  const screenTitle = isRegistry ? "Registry" : "Matches";
 
   return (
     <ScrollView
@@ -86,15 +133,34 @@ export default function MatchesScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[s.headerTitle, { color: colors.foreground }]}>Matches</Text>
+      <View style={s.titleRow}>
+        <Text style={[s.headerTitle, { color: colors.foreground }]}>{screenTitle}</Text>
+        {isRegistry && isActive && session && (
+          <Pressable
+            style={[s.shareBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleShareRegistry}
+          >
+            <Ionicons name="share-outline" size={16} color={colors.foreground} />
+            <Text style={[s.shareBtnText, { color: colors.foreground }]}>Share</Text>
+          </Pressable>
+        )}
+      </View>
 
       {/* No session */}
       {!session && (
         <View style={s.emptyState}>
-          <Ionicons name="heart-circle-outline" size={72} color={colors.mutedForeground} />
-          <Text style={[s.emptyTitle, { color: colors.foreground }]}>Find Your Matches</Text>
+          <Ionicons
+            name={isRegistry ? "gift-outline" : "heart-circle-outline"}
+            size={72}
+            color={colors.mutedForeground}
+          />
+          <Text style={[s.emptyTitle, { color: colors.foreground }]}>
+            {isRegistry ? "Start Your Registry" : "Find Your Matches"}
+          </Text>
           <Text style={[s.emptySub, { color: colors.mutedForeground }]}>
-            Start a shared session with your partner and swipe together to discover what you both love.
+            {isRegistry
+              ? "Start a shared session so both of you can approve items for the registry."
+              : "Start a shared session with your partner and swipe together to discover what you both love."}
           </Text>
           <Pressable
             style={[s.primaryBtn, { backgroundColor: colors.primary }]}
@@ -139,9 +205,13 @@ export default function MatchesScreen() {
               </Text>
             </View>
             <View style={s.bannerText}>
-              <Text style={[s.bannerTitle, { color: colors.foreground }]}>Session active</Text>
+              <Text style={[s.bannerTitle, { color: colors.foreground }]}>
+                {isRegistry ? "Registry active" : "Session active"}
+              </Text>
               <Text style={[s.bannerSub, { color: colors.mutedForeground }]}>
-                Swiping with {session.partner?.name ?? "partner"}
+                {isRegistry
+                  ? `Building registry with ${session.partner?.name ?? "partner"}`
+                  : `Swiping with ${session.partner?.name ?? "partner"}`}
               </Text>
             </View>
             <View style={[s.avatar, { backgroundColor: colors.primary + "55" }]}>
@@ -151,35 +221,103 @@ export default function MatchesScreen() {
             </View>
           </View>
 
-          {loading && matches.length === 0 ? (
+          {loading && matches.length === 0 && pending.length === 0 ? (
             <ActivityIndicator size="large" color={colors.primary} style={s.spinner} />
-          ) : matches.length === 0 ? (
-            <View style={s.emptyState}>
-              <Ionicons name="swap-horizontal-outline" size={56} color={colors.mutedForeground} />
-              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No matches yet</Text>
-              <Text style={[s.emptySub, { color: colors.mutedForeground }]}>
-                Both of you need to swipe right on the same product to create a match.
-              </Text>
-              <Pressable
-                style={[s.primaryBtn, { backgroundColor: colors.primary }]}
-                onPress={() => router.push("/(tabs)/shop")}
-              >
-                <Ionicons name="bag-outline" size={18} color={colors.primaryForeground} />
-                <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
-                  Go to Shop
-                </Text>
-              </Pressable>
-            </View>
           ) : (
             <>
-              <Text style={[s.matchCount, { color: colors.mutedForeground }]}>
-                {matches.length} {matches.length === 1 ? "match" : "matches"}
-              </Text>
-              <View style={s.grid}>
-                {matches.map((product) => (
-                  <MatchCard key={product.id} product={product} colors={colors} />
-                ))}
-              </View>
+              {/* Registry mode: mutual approval section */}
+              {isRegistry && (
+                <>
+                  <View style={s.sectionHeader}>
+                    <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                    <Text style={[s.sectionHeaderText, { color: colors.foreground }]}>
+                      Both approve
+                    </Text>
+                    <Text style={[s.sectionCount, { color: colors.mutedForeground }]}>
+                      {matches.length}
+                    </Text>
+                  </View>
+
+                  {matches.length === 0 ? (
+                    <View style={s.miniEmpty}>
+                      <Text style={[s.miniEmptyText, { color: colors.mutedForeground }]}>
+                        Swipe right on products together — items you both love appear here.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={s.grid}>
+                      {matches.map((product) => (
+                        <MatchCard
+                          key={product.id}
+                          product={product}
+                          colors={colors}
+                          badge="check"
+                        />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Waiting on partner section */}
+                  {pending.length > 0 && (
+                    <>
+                      <View style={[s.sectionHeader, { marginTop: 8 }]}>
+                        <Ionicons name="time-outline" size={18} color={colors.mutedForeground} />
+                        <Text style={[s.sectionHeaderText, { color: colors.foreground }]}>
+                          Waiting on partner
+                        </Text>
+                        <Text style={[s.sectionCount, { color: colors.mutedForeground }]}>
+                          {pending.length}
+                        </Text>
+                      </View>
+                      <View style={s.grid}>
+                        {pending.map((product) => (
+                          <MatchCard
+                            key={product.id}
+                            product={product}
+                            colors={colors}
+                            badge="pending"
+                          />
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Decoration/style mode: plain matches list */}
+              {!isRegistry && (
+                <>
+                  {matches.length === 0 ? (
+                    <View style={s.emptyState}>
+                      <Ionicons name="swap-horizontal-outline" size={56} color={colors.mutedForeground} />
+                      <Text style={[s.emptyTitle, { color: colors.foreground }]}>No matches yet</Text>
+                      <Text style={[s.emptySub, { color: colors.mutedForeground }]}>
+                        Both of you need to swipe right on the same product to create a match.
+                      </Text>
+                      <Pressable
+                        style={[s.primaryBtn, { backgroundColor: colors.primary }]}
+                        onPress={() => router.push("/(tabs)/shop")}
+                      >
+                        <Ionicons name="bag-outline" size={18} color={colors.primaryForeground} />
+                        <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
+                          Go to Shop
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={[s.matchCount, { color: colors.mutedForeground }]}>
+                        {matches.length} {matches.length === 1 ? "match" : "matches"}
+                      </Text>
+                      <View style={s.grid}>
+                        {matches.map((product) => (
+                          <MatchCard key={product.id} product={product} colors={colors} badge="heart" />
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
             </>
           )}
         </>
@@ -191,9 +329,11 @@ export default function MatchesScreen() {
 function MatchCard({
   product,
   colors,
+  badge,
 }: {
   product: MatchedProduct;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  badge: "heart" | "check" | "pending";
 }) {
   const s = StyleSheet.create({
     card: {
@@ -204,14 +344,21 @@ function MatchCard({
     },
     imageWrap: { position: "relative", width: "100%", aspectRatio: 1 },
     image: { width: "100%", height: "100%" },
-    badge: {
+    badgeWrap: {
       position: "absolute",
       top: 8,
       right: 8,
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: "#E91E63",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        badge === "check" ? "#4CAF50" : badge === "pending" ? colors.muted : "#E91E63",
+    },
+    pendingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.25)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -233,8 +380,11 @@ function MatchCard({
     <View style={s.card}>
       <View style={s.imageWrap}>
         <Image source={{ uri: product.url }} style={s.image} resizeMode="cover" />
-        <View style={s.badge}>
-          <Ionicons name="heart" size={12} color="#fff" />
+        {badge === "pending" && <View style={s.pendingOverlay} />}
+        <View style={s.badgeWrap}>
+          {badge === "heart" && <Ionicons name="heart" size={12} color="#fff" />}
+          {badge === "check" && <Ionicons name="checkmark" size={14} color="#fff" />}
+          {badge === "pending" && <Ionicons name="time" size={12} color={colors.mutedForeground} />}
         </View>
       </View>
       <View style={s.info}>
@@ -251,10 +401,28 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
   return StyleSheet.create({
     container: { flex: 1 },
     content: { paddingHorizontal: 24, gap: 16 },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 4,
+    },
     headerTitle: {
       fontSize: 28,
       fontFamily: "Inter_700Bold",
-      marginBottom: 4,
+    },
+    shareBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    shareBtnText: {
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
     },
     emptyState: {
       alignItems: "center",
@@ -320,6 +488,30 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
       textTransform: "uppercase",
       letterSpacing: 0.8,
       marginTop: -4,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 4,
+    },
+    sectionHeaderText: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      flex: 1,
+    },
+    sectionCount: {
+      fontSize: 13,
+      fontFamily: "Inter_500Medium",
+    },
+    miniEmpty: {
+      paddingVertical: 16,
+      paddingHorizontal: 8,
+    },
+    miniEmptyText: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 21,
     },
     grid: {
       flexDirection: "row",

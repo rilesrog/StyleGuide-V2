@@ -256,3 +256,133 @@ export const GetSessionMatchesResponse = zod.object({
 })
 
 
+/**
+ * @summary Set the session mode (decoration or registry)
+ */
+export const UpdateSessionModeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSessionModeBody = zod.object({
+  "mode": zod.string()
+})
+
+export const UpdateSessionModeResponse = zod.object({
+  "success": zod.boolean(),
+  "mode": zod.string()
+})
+
+
+/**
+ * @summary Get registry items (mutual likes) and pending items (one-sided likes)
+ */
+export const GetSessionRegistryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSessionRegistryResponse = zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+})),
+  "count": zod.number(),
+  "pending": zod.array(zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Export registry as a plain-text list
+ */
+export const ExportSessionRegistryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get current user info including active mode
+ */
+export const GetCurrentUserResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "mode": zod.string().optional()
+})
+
+
+/**
+ * @summary Update current user's active mode
+ */
+export const UpdateUserModeBody = zod.object({
+  "mode": zod.string()
+})
+
+export const UpdateUserModeResponse = zod.object({
+  "success": zod.boolean(),
+  "mode": zod.string()
+})
+
+
+/**
+ * @summary Get all room assignments for the current user
+ */
+export const GetRoomsResponse = zod.object({
+  "rooms": zod.array(zod.object({
+  "name": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "product": zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+})
+}))
+})),
+  "presetRooms": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Assign a liked product to a room
+ */
+export const AssignProductToRoomBody = zod.object({
+  "productId": zod.number(),
+  "room": zod.string()
+})
+
+
+/**
+ * @summary Remove a product from a room
+ */
+export const RemoveProductFromRoomBody = zod.object({
+  "productId": zod.number(),
+  "room": zod.string()
+})
+
+export const RemoveProductFromRoomResponse = zod.object({
+  "success": zod.boolean()
+})
+
+

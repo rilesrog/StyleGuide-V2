@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import styleRouter from "./style";
 import productsRouter from "./products";
 import sessionsRouter from "./sessions";
+import roomsRouter from "./rooms";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(styleRouter);
 router.use(productsRouter);
 router.use(sessionsRouter);
+router.use(roomsRouter);
 
 export default router;

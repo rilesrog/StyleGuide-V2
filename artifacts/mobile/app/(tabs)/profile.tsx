@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
+import { useMode, type AppMode } from "@/context/ModeContext";
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -23,8 +24,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { name, email, isLoggedIn, logout } = useUser();
   const { session, isActive, startSession, leaveSession } = useSession();
+  const { mode, setMode } = useMode();
   const [startingSession, setStartingSession] = React.useState(false);
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
+
+  const handleModeSelect = async (m: AppMode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await setMode(m);
+  };
 
   const handleStartSession = async () => {
     setStartingSession(true);
@@ -88,6 +95,44 @@ export default function ProfileScreen() {
           </Text>
           <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Match</Text>
         </View>
+      </View>
+
+      {/* Mode selector */}
+      <View style={[s.section, { backgroundColor: colors.card }]}>
+        <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Mode</Text>
+        <View style={[s.modeToggleRow, { backgroundColor: colors.muted }]}>
+          <Pressable
+            style={[s.modeOption, mode === "decoration" && { backgroundColor: colors.background }]}
+            onPress={() => handleModeSelect("decoration")}
+          >
+            <Ionicons
+              name="home-outline"
+              size={16}
+              color={mode === "decoration" ? colors.foreground : colors.mutedForeground}
+            />
+            <Text style={[s.modeOptionText, { color: mode === "decoration" ? colors.foreground : colors.mutedForeground }]}>
+              Home Decoration
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.modeOption, mode === "registry" && { backgroundColor: colors.background }]}
+            onPress={() => handleModeSelect("registry")}
+          >
+            <Ionicons
+              name="gift-outline"
+              size={16}
+              color={mode === "registry" ? colors.foreground : colors.mutedForeground}
+            />
+            <Text style={[s.modeOptionText, { color: mode === "registry" ? colors.foreground : colors.mutedForeground }]}>
+              Wedding Registry
+            </Text>
+          </Pressable>
+        </View>
+        <Text style={[s.modeDescription, { color: colors.mutedForeground }]}>
+          {mode === "decoration"
+            ? "Sort liked products into room-by-room boards."
+            : "Both partners must approve an item for it to join the registry."}
+        </Text>
       </View>
 
       {/* Shared session card */}
@@ -372,6 +417,30 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       textDecorationLine: "underline",
+    },
+    modeToggleRow: {
+      flexDirection: "row",
+      borderRadius: 12,
+      padding: 4,
+      gap: 4,
+    },
+    modeOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    modeOptionText: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+    },
+    modeDescription: {
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 19,
     },
   });
 }

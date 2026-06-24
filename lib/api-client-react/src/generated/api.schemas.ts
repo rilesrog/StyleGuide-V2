@@ -146,6 +146,53 @@ export interface SessionMatchesResponse {
   count: number;
 }
 
+export interface SessionRegistryResponse {
+  products: Product[];
+  count: number;
+  pending: Product[];
+}
+
+export interface ModeUpdateRequest {
+  mode: string;
+}
+
+export interface ModeUpdateResponse {
+  success: boolean;
+  mode: string;
+}
+
+export interface UserMeResponse {
+  id: number;
+  name: string;
+  email: string;
+  mode?: string;
+}
+
+export interface RoomProductItem {
+  id: number;
+  product: Product;
+}
+
+export interface RoomGroup {
+  name: string;
+  items: RoomProductItem[];
+}
+
+export interface RoomsResponse {
+  rooms: RoomGroup[];
+  presetRooms: string[];
+}
+
+export interface RoomAssignRequest {
+  productId: number;
+  room: string;
+}
+
+export interface RoomAssignResponse {
+  success: boolean;
+  id: number;
+}
+
 export type GetStylePhotosParams = {
 limit?: number;
 offset?: number;
@@ -155,5 +202,9 @@ export type GetProductFeedParams = {
 limit?: number;
 offset?: number;
 sessionId?: number;
+};
+
+export type RemoveProductFromRoom200 = {
+  success: boolean;
 };
 

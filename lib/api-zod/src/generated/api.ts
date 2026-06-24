@@ -110,3 +110,73 @@ export const GetStyleBoardResponse = zod.object({
 })
 
 
+/**
+ * @summary Get ranked product feed based on user style profile
+ */
+export const getProductFeedQueryLimitDefault = 20;
+export const getProductFeedQueryOffsetDefault = 0;
+
+export const GetProductFeedQueryParams = zod.object({
+  "limit": zod.coerce.number().default(getProductFeedQueryLimitDefault),
+  "offset": zod.coerce.number().default(getProductFeedQueryOffsetDefault)
+})
+
+export const GetProductFeedResponse = zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Import products from an external source
+ */
+export const ImportProductsBody = zod.object({
+  "products": zod.array(zod.object({
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Get the user's liked products
+ */
+export const GetProductBoardResponse = zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Record a swipe on a product
+ */
+export const RecordProductSwipeBody = zod.object({
+  "productId": zod.number(),
+  "liked": zod.boolean()
+})
+
+

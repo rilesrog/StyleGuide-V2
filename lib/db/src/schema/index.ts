@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -49,3 +49,31 @@ export const styleProfilesTable = pgTable("style_profiles", {
 export const insertStyleProfileSchema = createInsertSchema(styleProfilesTable).omit({ id: true });
 export type InsertStyleProfile = z.infer<typeof insertStyleProfileSchema>;
 export type StyleProfile = typeof styleProfilesTable.$inferSelect;
+
+export const productsTable = pgTable("products", {
+  id: serial("id").primaryKey(),
+  url: text("url").notNull(),
+  name: text("name").notNull(),
+  price: real("price").notNull(),
+  tags: text("tags").array().notNull().default([]),
+  category: text("category").notNull().default("general"),
+  brand: text("brand"),
+  source: text("source").default("mock"),
+  affiliateUrl: text("affiliate_url"),
+});
+
+export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true });
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof productsTable.$inferSelect;
+
+export const productSwipesTable = pgTable("product_swipes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  productId: integer("product_id").notNull().references(() => productsTable.id),
+  liked: boolean("liked").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertProductSwipeSchema = createInsertSchema(productSwipesTable).omit({ id: true, createdAt: true });
+export type InsertProductSwipe = z.infer<typeof insertProductSwipeSchema>;
+export type ProductSwipe = typeof productSwipesTable.$inferSelect;

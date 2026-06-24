@@ -14,6 +14,8 @@ tags:
     description: Authentication operations
   - name: style
     description: Style quiz and profile operations
+  - name: products
+    description: Product feed and board operations
 paths:
   /healthz:
     get:
@@ -168,6 +170,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StyleBoardResponse"
+
+  /products/feed:
+    get:
+      operationId: getProductFeed
+      tags: [products]
+      summary: Get ranked product feed based on user style profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Ranked products not yet swiped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductFeedResponse"
+
+  /products/import:
+    post:
+      operationId: importProducts
+      tags: [products]
+      summary: Import products from an external source
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportProductsRequest"
+      responses:
+        "201":
+          description: Products imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportProductsResponse"
+
+  /products/board:
+    get:
+      operationId: getProductBoard
+      tags: [products]
+      summary: Get the user's liked products
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Liked products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductBoardResponse"
+
+  /product-swipes:
+    post:
+      operationId: recordProductSwipe
+      tags: [products]
+      summary: Record a swipe on a product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductSwipeRequest"
+      responses:
+        "201":
+          description: Product swipe recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSwipeResponse"
 
 components:
   securitySchemes:
@@ -339,3 +424,128 @@ components:
             $ref: "#/components/schemas/StylePhoto"
       required:
         - photos
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        category:
+          type: string
+        brand:
+          type: string
+        source:
+          type: string
+        affiliateUrl:
+          type: string
+      required:
+        - id
+        - url
+        - name
+        - price
+        - tags
+        - category
+
+    ProductFeedResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+      required:
+        - products
+        - total
+
+    ProductSwipeRequest:
+      type: object
+      properties:
+        productId:
+          type: integer
+        liked:
+          type: boolean
+      required:
+        - productId
+        - liked
+
+    ProductSwipeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        swipeId:
+          type: integer
+      required:
+        - success
+        - swipeId
+
+    ProductBoardResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+      required:
+        - products
+
+    ImportProductsRequest:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportProductItem"
+      required:
+        - products
+
+    ImportProductItem:
+      type: object
+      properties:
+        url:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        category:
+          type: string
+        brand:
+          type: string
+        affiliateUrl:
+          type: string
+      required:
+        - url
+        - name
+        - price
+        - tags
+        - category
+
+    ImportProductsResponse:
+      type: object
+      properties:
+        imported:
+          type: integer
+        ids:
+          type: array
+          items:
+            type: integer
+      required:
+        - imported
+        - ids

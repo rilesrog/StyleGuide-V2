@@ -74,7 +74,62 @@ export interface StyleBoardResponse {
   photos: StylePhoto[];
 }
 
+export interface Product {
+  id: number;
+  url: string;
+  name: string;
+  price: number;
+  tags: string[];
+  category: string;
+  brand?: string;
+  source?: string;
+  affiliateUrl?: string;
+}
+
+export interface ProductFeedResponse {
+  products: Product[];
+  total: number;
+}
+
+export interface ProductSwipeRequest {
+  productId: number;
+  liked: boolean;
+}
+
+export interface ProductSwipeResponse {
+  success: boolean;
+  swipeId: number;
+}
+
+export interface ProductBoardResponse {
+  products: Product[];
+}
+
+export interface ImportProductItem {
+  url: string;
+  name: string;
+  price: number;
+  tags: string[];
+  category: string;
+  brand?: string;
+  affiliateUrl?: string;
+}
+
+export interface ImportProductsRequest {
+  products: ImportProductItem[];
+}
+
+export interface ImportProductsResponse {
+  imported: number;
+  ids: number[];
+}
+
 export type GetStylePhotosParams = {
+limit?: number;
+offset?: number;
+};
+
+export type GetProductFeedParams = {
 limit?: number;
 offset?: number;
 };

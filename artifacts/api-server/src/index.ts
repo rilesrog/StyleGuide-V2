@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { seedStylePhotos } from "./lib/seed";
+import { seedStylePhotos, seedProducts } from "./lib/seed";
 
 const rawPort = process.env["PORT"];
 
@@ -28,5 +28,11 @@ app.listen(port, async (err) => {
     await seedStylePhotos();
   } catch (seedErr) {
     logger.error({ err: seedErr }, "Error seeding style photos");
+  }
+
+  try {
+    await seedProducts();
+  } catch (seedErr) {
+    logger.error({ err: seedErr }, "Error seeding products");
   }
 });

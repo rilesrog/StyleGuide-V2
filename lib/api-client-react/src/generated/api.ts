@@ -22,9 +22,16 @@ import type {
 import type {
   AuthResponse,
   ErrorResponse,
+  GetProductFeedParams,
   GetStylePhotosParams,
   HealthStatus,
+  ImportProductsRequest,
+  ImportProductsResponse,
   LoginRequest,
+  ProductBoardResponse,
+  ProductFeedResponse,
+  ProductSwipeRequest,
+  ProductSwipeResponse,
   RegisterRequest,
   ResetSwipesResponse,
   StyleBoardResponse,
@@ -644,4 +651,307 @@ export function useGetStyleBoard<TData = Awaited<ReturnType<typeof getStyleBoard
 
 
 
+
+export const getGetProductFeedUrl = (params?: GetProductFeedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/products/feed?${stringifiedParams}` : `/api/products/feed`
+}
+
+/**
+ * @summary Get ranked product feed based on user style profile
+ */
+export const getProductFeed = async (params?: GetProductFeedParams, options?: RequestInit): Promise<ProductFeedResponse> => {
+
+  return customFetch<ProductFeedResponse>(getGetProductFeedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductFeedQueryKey = (params?: GetProductFeedParams,) => {
+    return [
+    `/api/products/feed`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetProductFeedQueryOptions = <TData = Awaited<ReturnType<typeof getProductFeed>>, TError = ErrorType<unknown>>(params?: GetProductFeedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductFeedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductFeed>>> = ({ signal }) => getProductFeed(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductFeed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProductFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getProductFeed>>>
+export type GetProductFeedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get ranked product feed based on user style profile
+ */
+
+export function useGetProductFeed<TData = Awaited<ReturnType<typeof getProductFeed>>, TError = ErrorType<unknown>>(
+ params?: GetProductFeedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProductFeedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getImportProductsUrl = () => {
+
+
+
+
+  return `/api/products/import`
+}
+
+/**
+ * @summary Import products from an external source
+ */
+export const importProducts = async (importProductsRequest: ImportProductsRequest, options?: RequestInit): Promise<ImportProductsResponse> => {
+
+  return customFetch<ImportProductsResponse>(getImportProductsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      importProductsRequest,)
+  }
+);}
+
+
+
+
+export const getImportProductsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext> => {
+
+const mutationKey = ['importProducts'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importProducts>>, {data: BodyType<ImportProductsRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importProducts(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportProductsMutationResult = NonNullable<Awaited<ReturnType<typeof importProducts>>>
+    export type ImportProductsMutationBody = BodyType<ImportProductsRequest>
+    export type ImportProductsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import products from an external source
+ */
+export const useImportProducts = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importProducts>>, TError,{data: BodyType<ImportProductsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importProducts>>,
+        TError,
+        {data: BodyType<ImportProductsRequest>},
+        TContext
+      > => {
+      return useMutation(getImportProductsMutationOptions(options));
+    }
+
+export const getGetProductBoardUrl = () => {
+
+
+
+
+  return `/api/products/board`
+}
+
+/**
+ * @summary Get the user's liked products
+ */
+export const getProductBoard = async ( options?: RequestInit): Promise<ProductBoardResponse> => {
+
+  return customFetch<ProductBoardResponse>(getGetProductBoardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductBoardQueryKey = () => {
+    return [
+    `/api/products/board`
+    ] as const;
+    }
+
+
+export const getGetProductBoardQueryOptions = <TData = Awaited<ReturnType<typeof getProductBoard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductBoardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductBoard>>> = ({ signal }) => getProductBoard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProductBoardQueryResult = NonNullable<Awaited<ReturnType<typeof getProductBoard>>>
+export type GetProductBoardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the user's liked products
+ */
+
+export function useGetProductBoard<TData = Awaited<ReturnType<typeof getProductBoard>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductBoard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProductBoardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRecordProductSwipeUrl = () => {
+
+
+
+
+  return `/api/product-swipes`
+}
+
+/**
+ * @summary Record a swipe on a product
+ */
+export const recordProductSwipe = async (productSwipeRequest: ProductSwipeRequest, options?: RequestInit): Promise<ProductSwipeResponse> => {
+
+  return customFetch<ProductSwipeResponse>(getRecordProductSwipeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      productSwipeRequest,)
+  }
+);}
+
+
+
+
+export const getRecordProductSwipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordProductSwipe>>, TError,{data: BodyType<ProductSwipeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordProductSwipe>>, TError,{data: BodyType<ProductSwipeRequest>}, TContext> => {
+
+const mutationKey = ['recordProductSwipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordProductSwipe>>, {data: BodyType<ProductSwipeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordProductSwipe(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordProductSwipeMutationResult = NonNullable<Awaited<ReturnType<typeof recordProductSwipe>>>
+    export type RecordProductSwipeMutationBody = BodyType<ProductSwipeRequest>
+    export type RecordProductSwipeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a swipe on a product
+ */
+export const useRecordProductSwipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordProductSwipe>>, TError,{data: BodyType<ProductSwipeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordProductSwipe>>,
+        TError,
+        {data: BodyType<ProductSwipeRequest>},
+        TContext
+      > => {
+      return useMutation(getRecordProductSwipeMutationOptions(options));
+    }
 

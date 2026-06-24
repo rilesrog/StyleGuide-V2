@@ -1,13 +1,20 @@
-import { useGetStyleBoard, useGetStyleProfile, useResetSwipes } from "@workspace/api-client-react";
-import React from "react";
+import {
+  useGetStyleBoard,
+  useGetStyleProfile,
+  useResetSwipes,
+  useGetProductBoard,
+} from "@workspace/api-client-react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
   Image,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +30,17 @@ import * as Haptics from "expo-haptics";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - 32 - 8) / 2;
 
+type Product = {
+  id: number;
+  url: string;
+  name: string;
+  price: number;
+  tags: string[];
+  category: string;
+  brand?: string | null;
+  affiliateUrl?: string | null;
+};
+
 export default function BoardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -30,6 +48,8 @@ export default function BoardScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
+  const [activeTab, setActiveTab] = useState<"photos" | "products">("photos");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const { data: boardData, isLoading: boardLoading } = useGetStyleBoard({
     query: { enabled: isLoggedIn, staleTime: 0 },
@@ -39,9 +59,14 @@ export default function BoardScreen() {
     query: { enabled: isLoggedIn, staleTime: 0 },
   });
 
+  const { data: productBoardData, isLoading: productBoardLoading } = useGetProductBoard({
+    query: { enabled: isLoggedIn, staleTime: 0 },
+  });
+
   const resetSwipesMutation = useResetSwipes();
 
   const photos = (boardData?.photos ?? []) as Array<{ id: number; url: string; tags: string[] }>;
+  const products = (productBoardData?.products ?? []) as Product[];
   const topTags = profileData?.topTags ?? [];
   const tagWeights = (profileData?.tagWeights ?? []) as Array<{
     tag: string;
@@ -74,10 +99,11 @@ export default function BoardScreen() {
   };
 
   const s = stylesheet(colors);
+  const isLoading = boardLoading || productBoardLoading;
 
   if (!isLoggedIn) return null;
 
-  if (boardLoading) {
+  if (isLoading && photos.length === 0 && products.length === 0) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -85,15 +111,13 @@ export default function BoardScreen() {
     );
   }
 
+  const displayPrice = (price: number) =>
+    `$${price.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
   const ListHeader = () => (
     <View>
       <View style={[s.header, { paddingTop: topInset + 8 }]}>
         <Text style={[s.headerTitle, { color: colors.foreground }]}>My Board</Text>
-        {photos.length > 0 && (
-          <Text style={[s.headerCount, { color: colors.mutedForeground }]}>
-            {photos.length} saved
-          </Text>
-        )}
       </View>
 
       {topTags.length > 0 && (
@@ -135,52 +159,179 @@ export default function BoardScreen() {
         </View>
       )}
 
-      {photos.length === 0 && (
-        <View style={s.emptyState}>
-          <Ionicons name="images-outline" size={48} color={colors.mutedForeground} />
-          <Text style={[s.emptyTitle, { color: colors.foreground }]}>Your board is empty</Text>
-          <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
-            Swipe right on photos you love in the Discover tab
+      <View style={[s.segmentRow, { borderBottomColor: colors.border }]}>
+        <Pressable
+          style={[s.segment, activeTab === "photos" && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
+          onPress={() => setActiveTab("photos")}
+        >
+          <Text style={[s.segmentText, { color: activeTab === "photos" ? colors.primary : colors.mutedForeground }]}>
+            Photos {photos.length > 0 ? `(${photos.length})` : ""}
           </Text>
-        </View>
-      )}
+        </Pressable>
+        <Pressable
+          style={[s.segment, activeTab === "products" && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
+          onPress={() => setActiveTab("products")}
+        >
+          <Text style={[s.segmentText, { color: activeTab === "products" ? colors.primary : colors.mutedForeground }]}>
+            Products {products.length > 0 ? `(${products.length})` : ""}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 
+  const photoData = activeTab === "photos" ? photos : [];
+  const productData = activeTab === "products" ? products : [];
+
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={photos}
-        keyExtractor={(item) => String(item.id)}
-        numColumns={2}
-        columnWrapperStyle={s.row}
-        contentContainerStyle={[
-          s.grid,
-          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 },
-        ]}
-        ListHeaderComponent={ListHeader}
-        renderItem={({ item }) => (
-          <View style={[s.photoCard, { backgroundColor: colors.card }]}>
-            <Image source={{ uri: item.url }} style={s.photo} resizeMode="cover" />
-            {item.tags
-              .filter(
-                (t: string) =>
-                  !["neutral", "warm", "light", "dark", "bright", "airy", "clean", "bold", "white"].includes(t)
-              )
-              .slice(0, 1)
-              .map((tag: string) => (
-                <View
-                  key={tag}
-                  style={[s.photoTag, { backgroundColor: colors.background + "DD" }]}
-                >
-                  <Text style={[s.photoTagText, { color: colors.foreground }]}>{tag}</Text>
+      {activeTab === "photos" ? (
+        <FlatList
+          data={photoData}
+          keyExtractor={(item) => String(item.id)}
+          numColumns={2}
+          columnWrapperStyle={s.row}
+          contentContainerStyle={[
+            s.grid,
+            { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 },
+          ]}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={s.emptyState}>
+              <Ionicons name="images-outline" size={48} color={colors.mutedForeground} />
+              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No photos saved yet</Text>
+              <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
+                Swipe right on photos you love in the Discover tab
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={[s.photoCard, { backgroundColor: colors.card }]}>
+              <Image source={{ uri: item.url }} style={s.photo} resizeMode="cover" />
+              {item.tags
+                .filter(
+                  (t: string) =>
+                    !["neutral", "warm", "light", "dark", "bright", "airy", "clean", "bold", "white"].includes(t)
+                )
+                .slice(0, 1)
+                .map((tag: string) => (
+                  <View
+                    key={tag}
+                    style={[s.photoTag, { backgroundColor: colors.background + "DD" }]}
+                  >
+                    <Text style={[s.photoTagText, { color: colors.foreground }]}>{tag}</Text>
+                  </View>
+                ))}
+            </View>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          data={productData}
+          keyExtractor={(item) => String(item.id)}
+          numColumns={2}
+          columnWrapperStyle={s.row}
+          contentContainerStyle={[
+            s.grid,
+            { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 },
+          ]}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={s.emptyState}>
+              <Ionicons name="bag-outline" size={48} color={colors.mutedForeground} />
+              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No products saved yet</Text>
+              <Text style={[s.emptySubtitle, { color: colors.mutedForeground }]}>
+                Swipe right on products you love in the Shop tab
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              style={[s.productCard, { backgroundColor: colors.card }]}
+              onPress={() => setSelectedProduct(item)}
+            >
+              <Image source={{ uri: item.url }} style={s.productImage} resizeMode="cover" />
+              <View style={s.productInfo}>
+                <Text style={[s.productName, { color: colors.foreground }]} numberOfLines={2}>
+                  {item.name}
+                </Text>
+                <Text style={[s.productPrice, { color: colors.primary }]}>
+                  {displayPrice(item.price)}
+                </Text>
+              </View>
+            </Pressable>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      <Modal
+        visible={!!selectedProduct}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedProduct(null)}
+      >
+        <Pressable style={s.modalBackdrop} onPress={() => setSelectedProduct(null)}>
+          <Pressable style={[s.modalSheet, { backgroundColor: colors.card }]} onPress={() => {}}>
+            <View style={[s.modalHandle, { backgroundColor: colors.border }]} />
+            {selectedProduct && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Image
+                  source={{ uri: selectedProduct.url }}
+                  style={s.modalImage}
+                  resizeMode="cover"
+                />
+                <View style={s.modalContent}>
+                  <View style={s.modalTopRow}>
+                    <Text style={[s.modalName, { color: colors.foreground }]}>
+                      {selectedProduct.name}
+                    </Text>
+                    <Text style={[s.modalPrice, { color: colors.primary }]}>
+                      {displayPrice(selectedProduct.price)}
+                    </Text>
+                  </View>
+                  <Text style={[s.modalCategory, { color: colors.mutedForeground }]}>
+                    {selectedProduct.category}
+                    {selectedProduct.brand ? ` · ${selectedProduct.brand}` : ""}
+                  </Text>
+                  <View style={s.modalTagsRow}>
+                    {(selectedProduct.tags ?? [])
+                      .filter(
+                        (t) =>
+                          !["neutral", "warm", "light", "dark", "bright", "airy", "clean", "bold", "white"].includes(t)
+                      )
+                      .slice(0, 4)
+                      .map((tag) => (
+                        <View
+                          key={tag}
+                          style={[
+                            s.modalTag,
+                            {
+                              backgroundColor: colors.primary + "20",
+                              borderColor: colors.primary + "40",
+                            },
+                          ]}
+                        >
+                          <Text style={[s.modalTagText, { color: colors.primary }]}>{tag}</Text>
+                        </View>
+                      ))}
+                  </View>
+                  <Pressable
+                    style={[s.viewProductBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => setSelectedProduct(null)}
+                  >
+                    <Ionicons name="open-outline" size={18} color={colors.primaryForeground} />
+                    <Text style={[s.viewProductBtnText, { color: colors.primaryForeground }]}>
+                      View Product
+                    </Text>
+                  </Pressable>
                 </View>
-              ))}
-          </View>
-        )}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!!photos.length}
-      />
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -197,7 +348,6 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       justifyContent: "space-between",
     },
     headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
-    headerCount: { fontSize: 14, fontFamily: "Inter_400Regular" },
     profileCard: { borderRadius: 20, padding: 20, gap: 12 },
     profileCardLabel: {
       fontSize: 12,
@@ -229,6 +379,18 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       marginTop: 4,
     },
     retakeBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+    segmentRow: {
+      flexDirection: "row",
+      marginHorizontal: 16,
+      marginBottom: 8,
+      borderBottomWidth: 1,
+    },
+    segment: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 12,
+    },
+    segmentText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
     emptyState: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 32, gap: 12 },
     emptyTitle: { fontSize: 20, fontFamily: "Inter_600SemiBold", textAlign: "center" },
     emptySubtitle: {
@@ -255,5 +417,93 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       borderRadius: 12,
     },
     photoTagText: { fontSize: 11, fontFamily: "Inter_500Medium", textTransform: "capitalize" },
+    productCard: {
+      width: CARD_WIDTH,
+      borderRadius: 16,
+      overflow: "hidden",
+    },
+    productImage: { width: "100%", height: CARD_WIDTH * 1.1 },
+    productInfo: { padding: 10, gap: 4 },
+    productName: {
+      fontSize: 13,
+      fontFamily: "Inter_500Medium",
+      lineHeight: 18,
+    },
+    productPrice: {
+      fontSize: 14,
+      fontFamily: "Inter_700Bold",
+    },
+    modalBackdrop: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0,0,0,0.4)",
+    },
+    modalSheet: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: "85%",
+      paddingTop: 12,
+    },
+    modalHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: 16,
+    },
+    modalImage: {
+      width: "100%",
+      height: 280,
+    },
+    modalContent: {
+      padding: 20,
+      gap: 10,
+    },
+    modalTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    modalName: {
+      fontSize: 18,
+      fontFamily: "Inter_600SemiBold",
+      flex: 1,
+      lineHeight: 24,
+    },
+    modalPrice: {
+      fontSize: 20,
+      fontFamily: "Inter_700Bold",
+    },
+    modalCategory: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      textTransform: "capitalize",
+    },
+    modalTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    modalTag: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+    },
+    modalTagText: {
+      fontSize: 12,
+      fontFamily: "Inter_500Medium",
+      textTransform: "capitalize",
+    },
+    viewProductBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 16,
+      marginTop: 8,
+    },
+    viewProductBtnText: {
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+    },
   });
 }

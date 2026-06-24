@@ -469,9 +469,16 @@ paths:
     get:
       operationId: getRooms
       tags: [rooms]
-      summary: Get all room assignments for the current user
+      summary: Get all room assignments for the current user (or merged with partner if sessionId provided)
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: sessionId
+          schema:
+            type: integer
+          required: false
+          description: Active session ID; when provided, merges partner room assignments
       responses:
         "200":
           description: Room assignments grouped by room

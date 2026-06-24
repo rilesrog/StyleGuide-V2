@@ -86,13 +86,15 @@ export default function BoardScreen() {
 
   const sessionId = isActive && session ? session.id : undefined;
 
-  const { data: roomsData } = useGetRooms({
-    query: {
-      enabled: isLoggedIn && isDecoration,
-      staleTime: 0,
-      queryKey: ["/api/rooms", sessionId],
-    },
-  });
+  const { data: roomsData } = useGetRooms(
+    sessionId ? { sessionId } : undefined,
+    {
+      query: {
+        enabled: isLoggedIn && isDecoration,
+        staleTime: 0,
+      },
+    }
+  );
 
   const assignToRoom = useAssignProductToRoom();
   const removeFromRoom = useRemoveProductFromRoom();

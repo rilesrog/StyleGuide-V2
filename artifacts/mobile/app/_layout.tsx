@@ -63,11 +63,11 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <UserProvider>
-                <ModeProvider>
-                  <SessionProvider>
+                <SessionProvider>
+                  <ModeProvider>
                     <RootLayoutNav />
-                  </SessionProvider>
-                </ModeProvider>
+                  </ModeProvider>
+                </SessionProvider>
               </UserProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

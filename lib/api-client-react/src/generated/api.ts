@@ -23,6 +23,7 @@ import type {
   AuthResponse,
   ErrorResponse,
   GetProductFeedParams,
+  GetRoomsParams,
   GetStylePhotosParams,
   HealthStatus,
   ImportProductItem,
@@ -1640,20 +1641,27 @@ export const useUpdateUserMode = <TError = ErrorType<unknown>,
       return useMutation(getUpdateUserModeMutationOptions(options));
     }
 
-export const getGetRoomsUrl = () => {
+export const getGetRoomsUrl = (params?: GetRoomsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/rooms`
+  return stringifiedParams.length > 0 ? `/api/rooms?${stringifiedParams}` : `/api/rooms`
 }
 
 /**
- * @summary Get all room assignments for the current user
+ * @summary Get all room assignments for the current user (or merged with partner if sessionId provided)
  */
-export const getRooms = async ( options?: RequestInit): Promise<RoomsResponse> => {
+export const getRooms = async (params?: GetRoomsParams, options?: RequestInit): Promise<RoomsResponse> => {
 
-  return customFetch<RoomsResponse>(getGetRoomsUrl(),
+  return customFetch<RoomsResponse>(getGetRoomsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1666,23 +1674,23 @@ export const getRooms = async ( options?: RequestInit): Promise<RoomsResponse> =
 
 
 
-export const getGetRoomsQueryKey = () => {
+export const getGetRoomsQueryKey = (params?: GetRoomsParams,) => {
     return [
-    `/api/rooms`
+    `/api/rooms`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getRooms>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getRooms>>, TError = ErrorType<unknown>>(params?: GetRoomsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetRoomsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetRoomsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRooms>>> = ({ signal }) => getRooms({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRooms>>> = ({ signal }) => getRooms(params, { signal, ...requestOptions });
 
 
 
@@ -1696,15 +1704,15 @@ export type GetRoomsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get all room assignments for the current user
+ * @summary Get all room assignments for the current user (or merged with partner if sessionId provided)
  */
 
 export function useGetRooms<TData = Awaited<ReturnType<typeof getRooms>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetRoomsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetRoomsQueryOptions(options)
+  const queryOptions = getGetRoomsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

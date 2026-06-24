@@ -91,9 +91,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [session, authHeaders]);
 
-  // Poll every 5 seconds while session is pending (waiting for partner)
+  // Poll every 5 seconds while a session exists (pending or active)
+  // Active polling lets partners pick up mode changes from the other partner
   useEffect(() => {
-    if (!session || session.status === "active") {
+    if (!session) {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
@@ -107,7 +108,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         pollingRef.current = null;
       }
     };
-  }, [session?.id, session?.status, refreshSession]);
+  }, [session?.id, refreshSession]);
 
   const startSession = useCallback(async (): Promise<ActiveSession> => {
     const resp = await fetch(`${API_BASE}/api/sessions`, {

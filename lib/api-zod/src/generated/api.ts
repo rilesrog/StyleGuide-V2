@@ -340,8 +340,12 @@ export const UpdateUserModeResponse = zod.object({
 
 
 /**
- * @summary Get all room assignments for the current user
+ * @summary Get all room assignments for the current user (or merged with partner if sessionId provided)
  */
+export const GetRoomsQueryParams = zod.object({
+  "sessionId": zod.coerce.number().optional().describe('Active session ID; when provided, merges partner room assignments')
+})
+
 export const GetRoomsResponse = zod.object({
   "rooms": zod.array(zod.object({
   "name": zod.string(),

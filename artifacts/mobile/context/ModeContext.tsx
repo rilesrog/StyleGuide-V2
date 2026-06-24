@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUser } from "./UserContext";
+import { useSession } from "./SessionContext";
 
 export type AppMode = "decoration" | "registry";
 
@@ -32,9 +33,10 @@ const ModeContext = createContext<ModeContextValue>({
 
 export function ModeProvider({ children }: { children: React.ReactNode }) {
   const { token, isLoggedIn } = useUser();
+  const { session, isActive } = useSession();
   const [mode, setModeState] = useState<AppMode>("decoration");
 
-  // On mount: load from AsyncStorage first, then sync from server
+  // On mount: load from AsyncStorage first
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
       if (stored === "decoration" || stored === "registry") {
@@ -43,9 +45,9 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Sync mode from server when logged in
+  // Sync mode from server user profile when logged in (and no active session)
   useEffect(() => {
-    if (!isLoggedIn || !token) return;
+    if (!isLoggedIn || !token || isActive) return;
     fetch(`${API_BASE}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -57,14 +59,27 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [isLoggedIn, token]);
+  }, [isLoggedIn, token, isActive]);
+
+  // When a session is active, session.mode is authoritative — sync both partners
+  useEffect(() => {
+    if (!isActive || !session) return;
+    const sessionMode = session.mode;
+    if (sessionMode === "decoration" || sessionMode === "registry") {
+      if (sessionMode !== mode) {
+        setModeState(sessionMode);
+        AsyncStorage.setItem(STORAGE_KEY, sessionMode).catch(() => {});
+      }
+    }
+  }, [isActive, session?.mode]);
 
   const setMode = useCallback(
     async (newMode: AppMode) => {
       setModeState(newMode);
       await AsyncStorage.setItem(STORAGE_KEY, newMode).catch(() => {});
       if (token) {
-        await fetch(`${API_BASE}/api/users/me/mode`, {
+        // Always update user profile mode
+        fetch(`${API_BASE}/api/users/me/mode`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -72,9 +87,20 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
           },
           body: JSON.stringify({ mode: newMode }),
         }).catch(() => {});
+        // Also update session mode so partner picks it up via session polling
+        if (isActive && session?.id) {
+          fetch(`${API_BASE}/api/sessions/${session.id}/mode`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ mode: newMode }),
+          }).catch(() => {});
+        }
       }
     },
-    [token]
+    [token, isActive, session?.id]
   );
 
   return (

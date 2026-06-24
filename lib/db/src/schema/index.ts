@@ -58,7 +58,7 @@ export const sessionsTable = pgTable("sessions", {
   partnerId: integer("partner_id").references(() => usersTable.id),
   inviteToken: text("invite_token").notNull().unique(),
   status: text("status").notNull().default("pending"),
-  mode: text("mode").default("style"),
+  mode: text("mode").default("decoration"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

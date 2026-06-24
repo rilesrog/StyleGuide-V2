@@ -204,6 +204,13 @@ offset?: number;
 sessionId?: number;
 };
 
+export type GetRoomsParams = {
+/**
+ * Active session ID; when provided, merges partner room assignments
+ */
+sessionId?: number;
+};
+
 export type RemoveProductFromRoom200 = {
   success: boolean;
 };

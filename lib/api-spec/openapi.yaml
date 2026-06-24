@@ -16,6 +16,8 @@ tags:
     description: Style quiz and profile operations
   - name: products
     description: Product feed and board operations
+  - name: sessions
+    description: Shared session operations
 paths:
   /healthz:
     get:
@@ -189,6 +191,10 @@ paths:
           schema:
             type: integer
             default: 0
+        - name: sessionId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Ranked products not yet swiped
@@ -255,6 +261,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductSwipeResponse"
+
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a shared style session and get an invite token
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+
+  /sessions/join/{token}:
+    get:
+      operationId: joinSession
+      tags: [sessions]
+      summary: Join a session by invite token
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session joined (or re-polled by creator)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Session is full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get session status and members (poll to detect partner joining)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "403":
+          description: Not a session member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{id}/matches:
+    get:
+      operationId: getSessionMatches
+      tags: [sessions]
+      summary: Get products both session members have liked (the venn diagram overlap)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Matched products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionMatchesResponse"
 
 components:
   securitySchemes:
@@ -478,6 +580,8 @@ components:
           type: integer
         liked:
           type: boolean
+        sessionId:
+          type: integer
       required:
         - productId
         - liked
@@ -550,3 +654,54 @@ components:
       required:
         - imported
         - ids
+
+    SessionMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+      required:
+        - id
+        - name
+        - email
+
+    SessionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        mode:
+          type: string
+        inviteToken:
+          type: string
+        inviteUrl:
+          type: string
+        creator:
+          $ref: "#/components/schemas/SessionMember"
+        partner:
+          $ref: "#/components/schemas/SessionMember"
+      required:
+        - id
+        - status
+        - inviteToken
+        - inviteUrl
+        - creator
+
+    SessionMatchesResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        count:
+          type: integer
+      required:
+        - products
+        - count

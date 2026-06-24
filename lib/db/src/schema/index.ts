@@ -50,6 +50,21 @@ export const insertStyleProfileSchema = createInsertSchema(styleProfilesTable).o
 export type InsertStyleProfile = z.infer<typeof insertStyleProfileSchema>;
 export type StyleProfile = typeof styleProfilesTable.$inferSelect;
 
+// sessionsTable must be defined before productSwipesTable (FK dependency)
+export const sessionsTable = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  createdBy: integer("created_by").notNull().references(() => usersTable.id),
+  partnerId: integer("partner_id").references(() => usersTable.id),
+  inviteToken: text("invite_token").notNull().unique(),
+  status: text("status").notNull().default("pending"),
+  mode: text("mode").default("style"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSessionSchema = createInsertSchema(sessionsTable).omit({ id: true, createdAt: true });
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type Session = typeof sessionsTable.$inferSelect;
+
 export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
   url: text("url").notNull(),
@@ -70,6 +85,7 @@ export const productSwipesTable = pgTable("product_swipes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
+  sessionId: integer("session_id").references(() => sessionsTable.id),
   liked: boolean("liked").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

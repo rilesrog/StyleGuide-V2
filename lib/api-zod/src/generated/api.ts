@@ -118,7 +118,8 @@ export const getProductFeedQueryOffsetDefault = 0;
 
 export const GetProductFeedQueryParams = zod.object({
   "limit": zod.coerce.number().default(getProductFeedQueryLimitDefault),
-  "offset": zod.coerce.number().default(getProductFeedQueryOffsetDefault)
+  "offset": zod.coerce.number().default(getProductFeedQueryOffsetDefault),
+  "sessionId": zod.coerce.number().optional()
 })
 
 export const GetProductFeedResponse = zod.object({
@@ -175,7 +176,83 @@ export const GetProductBoardResponse = zod.object({
  */
 export const RecordProductSwipeBody = zod.object({
   "productId": zod.number(),
-  "liked": zod.boolean()
+  "liked": zod.boolean(),
+  "sessionId": zod.number().optional()
+})
+
+
+/**
+ * @summary Join a session by invite token
+ */
+export const JoinSessionParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const JoinSessionResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.string(),
+  "mode": zod.string().optional(),
+  "inviteToken": zod.string(),
+  "inviteUrl": zod.string(),
+  "creator": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string()
+}),
+  "partner": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string()
+}).optional()
+})
+
+
+/**
+ * @summary Get session status and members (poll to detect partner joining)
+ */
+export const GetSessionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSessionResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.string(),
+  "mode": zod.string().optional(),
+  "inviteToken": zod.string(),
+  "inviteUrl": zod.string(),
+  "creator": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string()
+}),
+  "partner": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string()
+}).optional()
+})
+
+
+/**
+ * @summary Get products both session members have liked (the venn diagram overlap)
+ */
+export const GetSessionMatchesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSessionMatchesResponse = zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.number(),
+  "url": zod.string(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "tags": zod.array(zod.string()),
+  "category": zod.string(),
+  "brand": zod.string().optional(),
+  "source": zod.string().optional(),
+  "affiliateUrl": zod.string().optional()
+})),
+  "count": zod.number()
 })
 
 

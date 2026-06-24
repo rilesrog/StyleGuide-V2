@@ -1,6 +1,7 @@
 import { useGetStyleProfile } from "@workspace/api-client-react";
 import React from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -9,16 +10,32 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { useSession } from "@/context/SessionContext";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { name, email, isLoggedIn, logout } = useUser();
+  const { session, isActive, startSession, leaveSession } = useSession();
+  const [startingSession, setStartingSession] = React.useState(false);
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
+
+  const handleStartSession = async () => {
+    setStartingSession(true);
+    try {
+      await startSession();
+      router.push("/invite");
+    } catch {
+    } finally {
+      setStartingSession(false);
+    }
+  };
 
   const { data: profileData } = useGetStyleProfile({
     query: { enabled: isLoggedIn, staleTime: 0 }
@@ -71,6 +88,76 @@ export default function ProfileScreen() {
           </Text>
           <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Match</Text>
         </View>
+      </View>
+
+      {/* Shared session card */}
+      <View style={[s.section, { backgroundColor: colors.card }]}>
+        <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Shared Session</Text>
+
+        {!session && (
+          <Pressable
+            style={[s.sessionBtn, { backgroundColor: colors.primary }]}
+            onPress={handleStartSession}
+            disabled={startingSession}
+          >
+            {startingSession ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : (
+              <Ionicons name="people-outline" size={18} color={colors.primaryForeground} />
+            )}
+            <Text style={[s.sessionBtnText, { color: colors.primaryForeground }]}>
+              {startingSession ? "Creating…" : "Start a Session"}
+            </Text>
+          </Pressable>
+        )}
+
+        {session && !isActive && (
+          <View style={s.sessionStatus}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <View style={s.sessionStatusText}>
+              <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>
+                Waiting for partner
+              </Text>
+              <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>
+                Share the invite link to get started
+              </Text>
+            </View>
+            <Pressable
+              style={[s.sessionSmallBtn, { borderColor: colors.primary }]}
+              onPress={() => router.push("/invite")}
+            >
+              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Invite</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {session && isActive && (
+          <View style={s.sessionStatus}>
+            <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+            <View style={s.sessionStatusText}>
+              <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>
+                Active with {session.partner?.name ?? "partner"}
+              </Text>
+              <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>
+                Swipe together to find matches
+              </Text>
+            </View>
+            <Pressable
+              style={[s.sessionSmallBtn, { borderColor: colors.primary }]}
+              onPress={() => router.push("/(tabs)/matches")}
+            >
+              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Matches</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {session && (
+          <Pressable onPress={leaveSession}>
+            <Text style={[s.endSessionText, { color: colors.mutedForeground }]}>
+              End session
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {tagWeights.length > 0 && (
@@ -239,6 +326,52 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
     logoutText: {
       fontSize: 16,
       fontFamily: "Inter_500Medium",
+    },
+    sessionBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 14,
+      width: "100%",
+    },
+    sessionBtnText: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+    },
+    sessionStatus: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    sessionStatusText: {
+      flex: 1,
+      gap: 2,
+    },
+    sessionStatusTitle: {
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+    },
+    sessionStatusSub: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+    },
+    sessionSmallBtn: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 10,
+      borderWidth: 1.5,
+    },
+    sessionSmallBtnText: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+    },
+    endSessionText: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      textDecorationLine: "underline",
     },
   });
 }

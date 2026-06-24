@@ -19,6 +19,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "bag", selected: "bag.fill" }} />
         <Label>Shop</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="matches">
+        <Icon sf={{ default: "heart.circle", selected: "heart.circle.fill" }} />
+        <Label>Matches</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="board">
         <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
         <Label>Board</Label>
@@ -85,6 +89,18 @@ function ClassicTabLayout() {
               <SymbolView name="bag" tintColor={color} size={24} />
             ) : (
               <Ionicons name="bag-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="matches"
+        options={{
+          title: "Matches",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="heart.circle" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="heart-circle-outline" size={22} color={color} />
             ),
         }}
       />

@@ -34,6 +34,8 @@ import type {
   ProductSwipeResponse,
   RegisterRequest,
   ResetSwipesResponse,
+  SessionMatchesResponse,
+  SessionResponse,
   StyleBoardResponse,
   StylePhotosResponse,
   StyleProfileResponse,
@@ -954,4 +956,305 @@ export const useRecordProductSwipe = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getRecordProductSwipeMutationOptions(options));
     }
+
+export const getCreateSessionUrl = () => {
+
+
+
+
+  return `/api/sessions`
+}
+
+/**
+ * @summary Create a shared style session and get an invite token
+ */
+export const createSession = async ( options?: RequestInit): Promise<SessionResponse> => {
+
+  return customFetch<SessionResponse>(getCreateSessionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSession>>, TError,void, TContext> => {
+
+const mutationKey = ['createSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSession>>, void> = () => {
+
+
+          return  createSession(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createSession>>>
+
+    export type CreateSessionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a shared style session and get an invite token
+ */
+export const useCreateSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSession>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateSessionMutationOptions(options));
+    }
+
+export const getJoinSessionUrl = (token: string,) => {
+
+
+
+
+  return `/api/sessions/join/${token}`
+}
+
+/**
+ * @summary Join a session by invite token
+ */
+export const joinSession = async (token: string, options?: RequestInit): Promise<SessionResponse> => {
+
+  return customFetch<SessionResponse>(getJoinSessionUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getJoinSessionQueryKey = (token: string,) => {
+    return [
+    `/api/sessions/join/${token}`
+    ] as const;
+    }
+
+
+export const getJoinSessionQueryOptions = <TData = Awaited<ReturnType<typeof joinSession>>, TError = ErrorType<ErrorResponse>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof joinSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getJoinSessionQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof joinSession>>> = ({ signal }) => joinSession(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof joinSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type JoinSessionQueryResult = NonNullable<Awaited<ReturnType<typeof joinSession>>>
+export type JoinSessionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Join a session by invite token
+ */
+
+export function useJoinSession<TData = Awaited<ReturnType<typeof joinSession>>, TError = ErrorType<ErrorResponse>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof joinSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getJoinSessionQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetSessionUrl = (id: number,) => {
+
+
+
+
+  return `/api/sessions/${id}`
+}
+
+/**
+ * @summary Get session status and members (poll to detect partner joining)
+ */
+export const getSession = async (id: number, options?: RequestInit): Promise<SessionResponse> => {
+
+  return customFetch<SessionResponse>(getGetSessionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSessionQueryKey = (id: number,) => {
+    return [
+    `/api/sessions/${id}`
+    ] as const;
+    }
+
+
+export const getGetSessionQueryOptions = <TData = Awaited<ReturnType<typeof getSession>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSession>>> = ({ signal }) => getSession(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getSession>>>
+export type GetSessionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get session status and members (poll to detect partner joining)
+ */
+
+export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSessionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetSessionMatchesUrl = (id: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/matches`
+}
+
+/**
+ * @summary Get products both session members have liked (the venn diagram overlap)
+ */
+export const getSessionMatches = async (id: number, options?: RequestInit): Promise<SessionMatchesResponse> => {
+
+  return customFetch<SessionMatchesResponse>(getGetSessionMatchesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSessionMatchesQueryKey = (id: number,) => {
+    return [
+    `/api/sessions/${id}/matches`
+    ] as const;
+    }
+
+
+export const getGetSessionMatchesQueryOptions = <TData = Awaited<ReturnType<typeof getSessionMatches>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionMatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionMatchesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionMatches>>> = ({ signal }) => getSessionMatches(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionMatches>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSessionMatchesQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionMatches>>>
+export type GetSessionMatchesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get products both session members have liked (the venn diagram overlap)
+ */
+
+export function useGetSessionMatches<TData = Awaited<ReturnType<typeof getSessionMatches>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionMatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSessionMatchesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

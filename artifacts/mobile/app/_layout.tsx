@@ -16,6 +16,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UserProvider } from "@/context/UserContext";
+import { SessionProvider } from "@/context/SessionContext";
 
 // Set API base URL at module level (before any component mounts)
 if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -32,6 +33,8 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="invite" options={{ title: "Invite Partner", presentation: "modal" }} />
+      <Stack.Screen name="join/[token]" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -59,7 +62,9 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <UserProvider>
-                <RootLayoutNav />
+                <SessionProvider>
+                  <RootLayoutNav />
+                </SessionProvider>
               </UserProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { useSession } from "@/context/SessionContext";
 import { ProductCard } from "@/components/ProductCard";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -36,8 +37,11 @@ export default function ShopScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useUser();
+  const { session, isActive } = useSession();
   const queryClient = useQueryClient();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
+
+  const sessionId = isActive && session ? session.id : undefined;
 
   // deck = local ranked list of unswiped products from this fetch
   const [deck, setDeck] = useState<Product[]>([]);
@@ -48,8 +52,9 @@ export default function ShopScreen() {
   // Always fetch from offset 0 with a large limit — pagination against a changing
   // filter set causes skipped products; instead we load all ranked candidates at once
   // and maintain deck state client-side.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, isLoading, refetch } = useGetProductFeed(
-    { limit: 200, offset: 0 },
+    { limit: 200, offset: 0, ...(sessionId ? { sessionId } : {}) } as any,
     { query: { enabled: isLoggedIn, staleTime: 0 } }
   );
 
@@ -103,7 +108,9 @@ export default function ShopScreen() {
       });
 
       try {
-        await swipeMutation.mutateAsync({ data: { productId: product.id, liked } });
+        await swipeMutation.mutateAsync({
+          data: { productId: product.id, liked, ...(sessionId ? { sessionId } : {}) },
+        });
         if (liked) {
           queryClient.invalidateQueries({ queryKey: ["/api/products/board"] });
         }
@@ -124,9 +131,18 @@ export default function ShopScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topInset + 8 }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Shop</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          {deck.length > 0 ? `${deck.length} picks for your style` : "Curated for your style"}
-        </Text>
+        {session && isActive ? (
+          <View style={styles.sessionPill}>
+            <Text style={[styles.sessionPillDot, { color: "#4CAF50" }]}>●</Text>
+            <Text style={[styles.sessionPillText, { color: colors.mutedForeground }]}>
+              Session with {session.partner?.name ?? "partner"}
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            {deck.length > 0 ? `${deck.length} picks for your style` : "Curated for your style"}
+          </Text>
+        )}
       </View>
 
       <View style={[styles.cardArea, { height: cardAreaHeight }]}>
@@ -253,4 +269,17 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   hintSpacer: { flex: 1 },
+  sessionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  sessionPillDot: {
+    fontSize: 10,
+  },
+  sessionPillText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
 });

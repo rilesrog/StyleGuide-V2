@@ -94,6 +94,7 @@ export interface ProductFeedResponse {
 export interface ProductSwipeRequest {
   productId: number;
   liked: boolean;
+  sessionId?: number;
 }
 
 export interface ProductSwipeResponse {
@@ -124,6 +125,27 @@ export interface ImportProductsResponse {
   ids: number[];
 }
 
+export interface SessionMember {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface SessionResponse {
+  id: number;
+  status: string;
+  mode?: string;
+  inviteToken: string;
+  inviteUrl: string;
+  creator: SessionMember;
+  partner?: SessionMember;
+}
+
+export interface SessionMatchesResponse {
+  products: Product[];
+  count: number;
+}
+
 export type GetStylePhotosParams = {
 limit?: number;
 offset?: number;
@@ -132,5 +154,6 @@ offset?: number;
 export type GetProductFeedParams = {
 limit?: number;
 offset?: number;
+sessionId?: number;
 };
 

@@ -77,8 +77,21 @@ export default function Onboarding() {
 
   const s = styles(colors);
 
+  const LogoHeader = () => (
+    <View style={s.heroSection}>
+      <View style={s.logoRow}>
+        <View style={s.frameIcon}>
+          <View style={s.frameTopLeft} />
+          <View style={s.frameBottomRight} />
+        </View>
+        <Text style={s.appName}>StyleSwipe</Text>
+      </View>
+      <Text style={s.tagline}>Discover what you love.</Text>
+    </View>
+  );
+
   return (
-    <View style={[s.container, { backgroundColor: colors.background }]}>
+    <View style={s.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -88,137 +101,123 @@ export default function Onboarding() {
             s.scroll,
             {
               paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
-              paddingBottom: insets.bottom + 24,
+              paddingBottom: insets.bottom + 40,
             },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.heroSection}>
-            <View style={[s.logoMark, { backgroundColor: colors.primary }]}>
-              <Text style={s.logoMarkText}>S</Text>
-            </View>
-            <Text style={[s.appName, { color: colors.foreground }]}>StyleSwipe</Text>
-            <Text style={[s.tagline, { color: colors.mutedForeground }]}>
-              Discover your aesthetic.{"\n"}Find pieces you love.
-            </Text>
-          </View>
-
           {mode === "welcome" && (
-            <View style={s.welcomeActions}>
-              <Pressable
-                style={[s.primaryBtn, { backgroundColor: colors.primary }]}
-                onPress={() => setMode("register")}
-              >
-                <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
-                  Create Account
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[s.secondaryBtn, { borderColor: colors.border }]}
-                onPress={() => setMode("login")}
-              >
-                <Text style={[s.secondaryBtnText, { color: colors.foreground }]}>Sign In</Text>
-              </Pressable>
-            </View>
+            <>
+              <LogoHeader />
+              <View style={s.spacer} />
+              <View style={s.welcomeActions}>
+                <Pressable style={s.createBtn} onPress={() => setMode("register")}>
+                  <Text style={s.createBtnText}>Create Account</Text>
+                </Pressable>
+                <Pressable style={s.signInBtn} onPress={() => setMode("login")}>
+                  <Text style={s.signInBtnText}>Sign In</Text>
+                </Pressable>
+              </View>
+            </>
           )}
 
           {(mode === "register" || mode === "login") && (
-            <View style={s.form}>
-              {mode === "register" && (
+            <>
+              <LogoHeader />
+              <View style={s.form}>
+                {mode === "register" && (
+                  <View style={s.inputGroup}>
+                    <Text style={[s.label, { color: colors.mutedForeground }]}>Your Name</Text>
+                    <TextInput
+                      style={[
+                        s.input,
+                        { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
+                      ]}
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="e.g. Alex Rivera"
+                      placeholderTextColor={colors.mutedForeground}
+                      autoCapitalize="words"
+                      returnKeyType="next"
+                    />
+                  </View>
+                )}
+
                 <View style={s.inputGroup}>
-                  <Text style={[s.label, { color: colors.mutedForeground }]}>Your Name</Text>
+                  <Text style={[s.label, { color: colors.mutedForeground }]}>Email</Text>
                   <TextInput
                     style={[
                       s.input,
                       { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
                     ]}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="e.g. Alex Rivera"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
                     placeholderTextColor={colors.mutedForeground}
-                    autoCapitalize="words"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     returnKeyType="next"
                   />
                 </View>
-              )}
 
-              <View style={s.inputGroup}>
-                <Text style={[s.label, { color: colors.mutedForeground }]}>Email</Text>
-                <TextInput
-                  style={[
-                    s.input,
-                    { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
-                  ]}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="next"
-                />
+                <View style={s.inputGroup}>
+                  <Text style={[s.label, { color: colors.mutedForeground }]}>Password</Text>
+                  <TextInput
+                    style={[
+                      s.input,
+                      { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
+                    ]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Min. 6 characters"
+                    placeholderTextColor={colors.mutedForeground}
+                    secureTextEntry
+                    returnKeyType="done"
+                    onSubmitEditing={mode === "register" ? handleGetStarted : handleSignIn}
+                  />
+                </View>
+
+                {error ? (
+                  <Text style={[s.errorText, { color: colors.destructive }]}>{error}</Text>
+                ) : null}
+
+                <Pressable
+                  style={[s.createBtn, { opacity: isLoading ? 0.6 : 1 }]}
+                  onPress={mode === "register" ? handleGetStarted : handleSignIn}
+                  disabled={isLoading}
+                >
+                  <Text style={s.createBtnText}>
+                    {isLoading ? "Loading..." : mode === "register" ? "Get Started" : "Sign In"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setMode(mode === "register" ? "login" : "register");
+                    setError("");
+                    setPassword("");
+                  }}
+                >
+                  <Text style={[s.switchText, { color: colors.mutedForeground }]}>
+                    {mode === "register"
+                      ? "Already have an account? Sign in"
+                      : "New here? Create an account"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setMode("welcome");
+                    setError("");
+                    setPassword("");
+                  }}
+                >
+                  <Text style={[s.backText, { color: colors.mutedForeground }]}>Back</Text>
+                </Pressable>
               </View>
-
-              <View style={s.inputGroup}>
-                <Text style={[s.label, { color: colors.mutedForeground }]}>Password</Text>
-                <TextInput
-                  style={[
-                    s.input,
-                    { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
-                  ]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Min. 6 characters"
-                  placeholderTextColor={colors.mutedForeground}
-                  secureTextEntry
-                  returnKeyType="done"
-                  onSubmitEditing={mode === "register" ? handleGetStarted : handleSignIn}
-                />
-              </View>
-
-              {error ? (
-                <Text style={[s.errorText, { color: colors.destructive }]}>{error}</Text>
-              ) : null}
-
-              <Pressable
-                style={[
-                  s.primaryBtn,
-                  { backgroundColor: colors.primary, opacity: isLoading ? 0.6 : 1 },
-                ]}
-                onPress={mode === "register" ? handleGetStarted : handleSignIn}
-                disabled={isLoading}
-              >
-                <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
-                  {isLoading ? "Loading..." : mode === "register" ? "Get Started" : "Sign In"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  setMode(mode === "register" ? "login" : "register");
-                  setError("");
-                  setPassword("");
-                }}
-              >
-                <Text style={[s.switchText, { color: colors.mutedForeground }]}>
-                  {mode === "register"
-                    ? "Already have an account? Sign in"
-                    : "New here? Create an account"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  setMode("welcome");
-                  setError("");
-                  setPassword("");
-                }}
-              >
-                <Text style={[s.backText, { color: colors.mutedForeground }]}>Back</Text>
-              </Pressable>
-            </View>
+            </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -228,26 +227,94 @@ export default function Onboarding() {
 
 function styles(colors: ReturnType<typeof useColors>) {
   return StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: "#FFFFFF" },
     scroll: { flexGrow: 1, paddingHorizontal: 28 },
-    heroSection: { alignItems: "center", paddingTop: 48, paddingBottom: 48, gap: 12 },
-    logoMark: {
-      width: 72,
-      height: 72,
-      borderRadius: 20,
+
+    heroSection: {
+      alignItems: "center",
+      paddingTop: 80,
+      paddingBottom: 20,
+      gap: 16,
+    },
+
+    logoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+
+    frameIcon: {
+      width: 48,
+      height: 48,
+      position: "relative",
+    },
+    frameTopLeft: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: 28,
+      height: 28,
+      borderTopWidth: 4,
+      borderLeftWidth: 4,
+      borderColor: "#111111",
+    },
+    frameBottomRight: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderBottomWidth: 4,
+      borderRightWidth: 4,
+      borderColor: "#111111",
+    },
+
+    appName: {
+      fontSize: 38,
+      fontFamily: "Inter_700Bold",
+      color: "#111111",
+      letterSpacing: -1,
+    },
+
+    tagline: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: "#555555",
+      textAlign: "center",
+      letterSpacing: 0.1,
+    },
+
+    spacer: { flex: 1, minHeight: 120 },
+
+    welcomeActions: { gap: 12 },
+
+    createBtn: {
+      height: 56,
+      borderRadius: 14,
+      backgroundColor: "#E0E0E0",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 8,
     },
-    logoMarkText: { fontSize: 36, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
-    appName: { fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-    tagline: {
+    createBtnText: {
       fontSize: 17,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      lineHeight: 26,
+      fontFamily: "Inter_500Medium",
+      color: "#111111",
     },
-    welcomeActions: { gap: 12 },
+    signInBtn: {
+      height: 56,
+      borderRadius: 14,
+      backgroundColor: "#FFFFFF",
+      borderWidth: 1.5,
+      borderColor: "#111111",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    signInBtnText: {
+      fontSize: 17,
+      fontFamily: "Inter_500Medium",
+      color: "#111111",
+    },
+
     form: { gap: 16 },
     inputGroup: { gap: 6 },
     label: { fontSize: 13, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
@@ -259,16 +326,6 @@ function styles(colors: ReturnType<typeof useColors>) {
       fontSize: 16,
       fontFamily: "Inter_400Regular",
     },
-    primaryBtn: { height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-    primaryBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-    secondaryBtn: {
-      height: 56,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    secondaryBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
     errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
     switchText: {
       fontSize: 15,

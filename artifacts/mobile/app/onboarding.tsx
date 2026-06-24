@@ -83,6 +83,9 @@ export default function Onboarding() {
         <View style={s.frameIcon}>
           <View style={s.frameTopLeft} />
           <View style={s.frameBottomRight} />
+          <View style={s.framePlus}>
+            <Text style={s.framePlusText}>+</Text>
+          </View>
         </View>
         <Text style={s.appName}>StyleSwipe</Text>
       </View>
@@ -244,29 +247,46 @@ function styles(colors: ReturnType<typeof useColors>) {
     },
 
     frameIcon: {
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       position: "relative",
     },
     frameTopLeft: {
       position: "absolute",
       top: 0,
       left: 0,
-      width: 28,
-      height: 28,
-      borderTopWidth: 4,
-      borderLeftWidth: 4,
+      width: 26,
+      height: 26,
+      borderTopWidth: 3.5,
+      borderLeftWidth: 3.5,
       borderColor: "#111111",
     },
     frameBottomRight: {
       position: "absolute",
       bottom: 0,
       right: 0,
-      width: 28,
-      height: 28,
-      borderBottomWidth: 4,
-      borderRightWidth: 4,
+      width: 26,
+      height: 26,
+      borderBottomWidth: 3.5,
+      borderRightWidth: 3.5,
       borderColor: "#111111",
+    },
+    framePlus: {
+      position: "absolute",
+      top: 12,
+      left: 12,
+      right: 12,
+      bottom: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    framePlusText: {
+      fontSize: 20,
+      color: "#111111",
+      fontFamily: "Inter_300Light",
+      lineHeight: 20,
+      textAlign: "center",
+      includeFontPadding: false,
     },
 
     appName: {

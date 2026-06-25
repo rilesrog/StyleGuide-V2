@@ -27,7 +27,7 @@ interface SwipeCardProps {
 }
 
 export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
-  function SwipeCard({ photoUrl, tags, onSwipe, isTop }, ref) {
+  function SwipeCard({ photoUrl, onSwipe, isTop }, ref) {
     const colors = useColors();
     const pan = useRef(new Animated.ValueXY()).current;
 
@@ -86,22 +86,8 @@ export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
     });
 
     const cardStyle = isTop
-      ? [
-          styles.card,
-          {
-            transform: [...pan.getTranslateTransform(), { rotate }],
-            backgroundColor: colors.card,
-          },
-        ]
-      : [
-          styles.card,
-          styles.behindCard,
-          { transform: [{ scale: 0.94 }, { translateY: 12 }], backgroundColor: colors.card },
-        ];
-
-    const displayTags = tags
-      .filter((t) => !["neutral", "warm", "light", "dark", "bright", "airy", "clean", "bold", "white"].includes(t))
-      .slice(0, 2);
+      ? [styles.card, { transform: [...pan.getTranslateTransform(), { rotate }], backgroundColor: colors.card }]
+      : [styles.card, styles.behindCard, { transform: [{ scale: 0.94 }, { translateY: 12 }], backgroundColor: colors.card }];
 
     return (
       <Animated.View style={cardStyle} {...(isTop ? panResponder.panHandlers : {})}>
@@ -117,17 +103,6 @@ export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
             </Animated.View>
           </>
         )}
-
-        <View style={[styles.tagsContainer, { backgroundColor: colors.background + "CC" }]}>
-          {displayTags.map((tag) => (
-            <View
-              key={tag}
-              style={[styles.tag, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}
-            >
-              <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
-            </View>
-          ))}
-        </View>
       </Animated.View>
     );
   }
@@ -172,15 +147,4 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "15deg" }],
   },
   nopeText: { color: "#E05A45", fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: 2 },
-  tagsContainer: {
-    position: "absolute",
-    bottom: 24,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  tagText: { fontSize: 13, fontFamily: "Inter_500Medium", textTransform: "capitalize" },
 });

@@ -113,7 +113,7 @@ export default function DiscoverScreen() {
   );
 
   const s = stylesheet(colors);
-  const bottomPad = insets.bottom + TAB_BAR_HEIGHT + 8;
+  const bottomPad = insets.bottom + TAB_BAR_HEIGHT + 10;
 
   if (!isLoggedIn) return null;
 
@@ -135,7 +135,7 @@ export default function DiscoverScreen() {
         </View>
       ) : (
         <>
-          <View style={[s.deckArea, { paddingTop: topInset + 16 }]}>
+          <View style={[s.deckArea, { paddingTop: topInset + 20 }]}>
             {photos.length >= 2 && (
               <SwipeCard
                 key={photos[1].id + "_behind"}

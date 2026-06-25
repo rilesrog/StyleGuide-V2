@@ -125,10 +125,13 @@ router.post("/auth/magic-link", async (req, res) => {
 
   await db.insert(magicLinkTokensTable).values({ email: normalEmail, token, expiresAt });
 
-  const apiBase = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : "";
-  const magicLink = `${apiBase}/api/auth/callback?token=${token}`;
+  // Link goes directly to the Expo web app — no API redirect needed
+  const expoBase = process.env.REPLIT_EXPO_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`
+    : process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "";
+  const magicLink = `${expoBase}/?magic_token=${token}`;
 
   // On Resend free tier (no verified domain), emails can only go to the account owner.
   // Set RESEND_TO_OVERRIDE=your@email.com to test; remove once a domain is verified.

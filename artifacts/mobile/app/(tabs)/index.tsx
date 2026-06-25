@@ -7,7 +7,6 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,14 +18,13 @@ import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { SwipeCard } from "@/components/SwipeCard";
-import { ProductCard } from "@/components/ProductCard";
+import { SwipeCard, type SwipeCardRef } from "@/components/SwipeCard";
+import { ProductCard, type ProductCardRef } from "@/components/ProductCard";
 import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
 import { useMode } from "@/context/ModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 const BATCH_SIZE = 20;
 const PRODUCT_BATCH = 200;
 
@@ -67,6 +65,7 @@ export default function DiscoverScreen() {
   const [isDonePhotos, setIsDonePhotos] = useState(false);
   const [swipeCount, setSwipeCount] = useState(0);
   const isLoadingMore = useRef(false);
+  const topPhotoCardRef = useRef<SwipeCardRef>(null);
 
   const { data: photosData, isLoading: photosLoading, refetch: refetchPhotos } = useGetStylePhotos(
     { limit: BATCH_SIZE, offset },
@@ -143,6 +142,7 @@ export default function DiscoverScreen() {
   const [isDoneProducts, setIsDoneProducts] = useState(false);
   const swipeInFlight = useRef(false);
   const hasFetched = useRef(false);
+  const topProductCardRef = useRef<ProductCardRef>(null);
 
   const sessionId = isActive && session ? session.id : undefined;
 
@@ -186,9 +186,7 @@ export default function DiscoverScreen() {
       if (swipeInFlight.current) return;
       swipeInFlight.current = true;
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(
-          liked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
-        );
+        Haptics.impactAsync(liked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
       }
       setDeck((prev) => {
         const next = prev.filter((p) => p.id !== product.id);
@@ -212,10 +210,37 @@ export default function DiscoverScreen() {
   );
 
   const s = stylesheet(colors);
+  const bottomPad = insets.bottom + (Platform.OS === "web" ? 90 : 80);
 
   if (!isLoggedIn) return null;
 
-  const cardHeight = SCREEN_HEIGHT * 0.62;
+  // Shared action buttons rendered below the deck
+  const ActionBar = ({
+    onSkip,
+    onSave,
+    saveIcon = "heart",
+  }: {
+    onSkip: () => void;
+    onSave: () => void;
+    saveIcon?: "heart" | "add-circle";
+  }) => (
+    <View style={[s.actionBar, { paddingBottom: bottomPad }]}>
+      <Pressable
+        style={[s.actionBtn, { backgroundColor: colors.card, borderColor: "#E05A45", borderWidth: 2 }]}
+        onPress={onSkip}
+        hitSlop={12}
+      >
+        <Ionicons name="close" size={30} color="#E05A45" />
+      </Pressable>
+      <Pressable
+        style={[s.actionBtn, { backgroundColor: colors.primary }]}
+        onPress={onSave}
+        hitSlop={12}
+      >
+        <Ionicons name={saveIcon} size={26} color={colors.primaryForeground} />
+      </Pressable>
+    </View>
+  );
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -252,7 +277,7 @@ export default function DiscoverScreen() {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : isDonePhotos || (photos.length === 0 && !photosLoading) ? (
-            <View style={[s.center, { paddingTop: 40 }]}>
+            <View style={s.center}>
               <View style={[s.doneIcon, { backgroundColor: colors.primary + "20" }]}>
                 <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
               </View>
@@ -263,7 +288,7 @@ export default function DiscoverScreen() {
             </View>
           ) : (
             <>
-              <View style={[s.deckArea, { height: cardHeight }]}>
+              <View style={s.deckArea}>
                 {photos.length >= 2 && (
                   <SwipeCard
                     key={photos[1].id + "_behind"}
@@ -276,6 +301,7 @@ export default function DiscoverScreen() {
                 )}
                 {photos.length >= 1 && (
                   <SwipeCard
+                    ref={topPhotoCardRef}
                     key={photos[0].id}
                     photoUrl={photos[0].url}
                     tags={photos[0].tags}
@@ -285,15 +311,10 @@ export default function DiscoverScreen() {
                   />
                 )}
               </View>
-              <View style={[s.actions, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}>
-                <View style={[s.hintBox, { backgroundColor: colors.card }]}>
-                  <Ionicons name="arrow-back" size={16} color={colors.mutedForeground} />
-                  <Text style={[s.hint, { color: colors.mutedForeground }]}>
-                    Swipe left to skip, right to save · {swipeCount} swiped
-                  </Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.mutedForeground} />
-                </View>
-              </View>
+              <ActionBar
+                onSkip={() => topPhotoCardRef.current?.triggerSwipe(false)}
+                onSave={() => topPhotoCardRef.current?.triggerSwipe(true)}
+              />
             </>
           )}
         </>
@@ -310,49 +331,47 @@ export default function DiscoverScreen() {
               </Text>
             </View>
           )}
-          <View style={[s.deckArea, { height: cardHeight }]}>
-            {feedLoading && deck.length === 0 ? (
-              <View style={s.center}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            ) : isDoneProducts || deck.length === 0 ? (
-              <View style={s.center}>
-                <Ionicons name="checkmark-circle-outline" size={64} color={colors.primary} />
-                <Text style={[s.doneTitle, { color: colors.foreground }]}>All caught up!</Text>
-                <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
-                  You've seen all products for your style.
-                </Text>
-                <Pressable style={[s.reloadBtn, { backgroundColor: colors.primary }]} onPress={resetDeck}>
-                  <Ionicons name="refresh-outline" size={18} color={colors.primaryForeground} />
-                  <Text style={[s.reloadBtnText, { color: colors.primaryForeground }]}>Browse Again</Text>
-                </Pressable>
-              </View>
-            ) : (
-              deck.slice(0, 2).reverse().map((product, revIdx) => {
-                const isTop = revIdx === deck.slice(0, 2).length - 1;
-                return (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    isTop={isTop}
-                    onSwipe={(liked) => handleProductSwipe(product, liked)}
-                    saveLabel={isRegistry ? "ADD" : "SAVE"}
-                    skipLabel="SKIP"
-                  />
-                );
-              })
-            )}
-          </View>
-          {!isDoneProducts && deck.length > 0 && (
-            <View style={[s.shopHint, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}>
-              <Ionicons name="arrow-back-outline" size={16} color={colors.mutedForeground} />
-              <Text style={[s.hint, { color: colors.mutedForeground }]}>skip</Text>
-              <View style={s.hintSpacer} />
-              <Text style={[s.hint, { color: colors.mutedForeground }]}>
-                {isRegistry ? "add to registry" : "save"}
-              </Text>
-              <Ionicons name="arrow-forward-outline" size={16} color={colors.mutedForeground} />
+
+          {feedLoading && deck.length === 0 ? (
+            <View style={s.center}>
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
+          ) : isDoneProducts || deck.length === 0 ? (
+            <View style={s.center}>
+              <Ionicons name="checkmark-circle-outline" size={64} color={colors.primary} />
+              <Text style={[s.doneTitle, { color: colors.foreground }]}>All caught up!</Text>
+              <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
+                You've seen all products for your style.
+              </Text>
+              <Pressable style={[s.reloadBtn, { backgroundColor: colors.primary }]} onPress={resetDeck}>
+                <Ionicons name="refresh-outline" size={18} color={colors.primaryForeground} />
+                <Text style={[s.reloadBtnText, { color: colors.primaryForeground }]}>Browse Again</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <View style={s.deckArea}>
+                {deck.slice(0, 2).reverse().map((product, revIdx) => {
+                  const isTop = revIdx === deck.slice(0, 2).length - 1;
+                  return (
+                    <ProductCard
+                      ref={isTop ? topProductCardRef : undefined}
+                      key={product.id}
+                      product={product}
+                      isTop={isTop}
+                      onSwipe={(liked) => handleProductSwipe(product, liked)}
+                      saveLabel={isRegistry ? "ADD" : "SAVE"}
+                      skipLabel="SKIP"
+                    />
+                  );
+                })}
+              </View>
+              <ActionBar
+                onSkip={() => topProductCardRef.current?.triggerSwipe(false)}
+                onSave={() => topProductCardRef.current?.triggerSwipe(true)}
+                saveIcon={isRegistry ? "add-circle" : "heart"}
+              />
+            </>
           )}
         </>
       )}
@@ -388,30 +407,31 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
     },
     segmentOptionText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
     deckArea: {
+      flex: 1,
       marginHorizontal: 16,
       position: "relative",
       alignItems: "center",
       justifyContent: "center",
     },
-    actions: { paddingHorizontal: 24, paddingTop: 16, alignItems: "center" },
-    hintBox: {
+    actionBar: {
       flexDirection: "row",
+      justifyContent: "center",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 20,
+      gap: 48,
+      paddingTop: 16,
     },
-    hint: { fontSize: 13, fontFamily: "Inter_400Regular" },
-    shopHint: {
-      flexDirection: "row",
+    actionBtn: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       alignItems: "center",
       justifyContent: "center",
-      paddingTop: 12,
-      paddingHorizontal: 32,
-      gap: 6,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    hintSpacer: { flex: 1 },
     doneIcon: {
       width: 80,
       height: 80,

@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -35,15 +36,19 @@ export default function QuizScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isLoggedIn, token, quizCompleted } = useUser();
+  const { isLoggedIn, token, quizCompleted, completeQuiz: markCompleteInContext } = useUser();
   const queryClient = useQueryClient();
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [offset, setOffset] = useState(0);
   const [totalAvailable, setTotalAvailable] = useState<number | null>(null);
-  const [yesCount, setYesCount] = useState(0);
+  // Start as null until initialized from persisted state
+  const [yesCount, setYesCount] = useState<number | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [resettingDislikes, setResettingDislikes] = useState(false);
   const isLoadingMore = useRef(false);
+  const autoCompleteTriggered = useRef(false);
 
   // Guard: completed users should not access the quiz
   useEffect(() => {
@@ -52,7 +57,26 @@ export default function QuizScreen() {
     }
   }, [quizCompleted]);
 
-  const { data: photosData, isLoading } = useGetStylePhotos(
+  // On mount: initialize yesCount from persisted liked count
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/api/style-profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const persisted: number = data.likedCount ?? 0;
+        setYesCount(persisted);
+        // If already at target (e.g. user partially done before), auto-complete
+        if (persisted >= TARGET_YES && !autoCompleteTriggered.current) {
+          autoCompleteTriggered.current = true;
+          triggerComplete();
+        }
+      })
+      .catch(() => setYesCount(0));
+  }, [token]);
+
+  const { data: photosData, isLoading, refetch } = useGetStylePhotos(
     { limit: BATCH_SIZE, offset },
     { query: { enabled: isLoggedIn, staleTime: 0 } }
   );
@@ -74,9 +98,10 @@ export default function QuizScreen() {
     }
   }, [photosData]);
 
-  const completeQuiz = useCallback(async () => {
+  const triggerComplete = useCallback(async () => {
     if (completing) return;
     setCompleting(true);
+    setCompletionError(null);
     try {
       const res = await fetch(`${API_BASE}/api/style-profile/complete`, {
         method: "POST",
@@ -85,18 +110,36 @@ export default function QuizScreen() {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (res.status === 409) {
+        // Already completed server-side — sync client state and exit quiz
+        markCompleteInContext();
+        return;
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setCompletionError((body as any).error ?? "Something went wrong. Please try again.");
+        setCompleting(false);
+        return;
+      }
+
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/style-profile"] });
-      router.replace({ pathname: "/quiz/results", params: { result: JSON.stringify(data.styleResult) } });
+      router.replace({
+        pathname: "/quiz/results",
+        params: { result: JSON.stringify(data.styleResult) },
+      });
     } catch {
+      setCompletionError("Network error. Please check your connection and try again.");
       setCompleting(false);
     }
-  }, [completing, token, router, queryClient]);
+  }, [completing, token, router, queryClient, markCompleteInContext]);
 
   const handleSwipe = useCallback(
     async (liked: boolean) => {
       const currentPhoto = photos[0];
-      if (!currentPhoto) return;
+      if (!currentPhoto || yesCount === null) return;
 
       Haptics.impactAsync(liked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
       setPhotos((prev) => prev.slice(1));
@@ -112,7 +155,7 @@ export default function QuizScreen() {
       } catch {}
 
       if (nextYesCount >= TARGET_YES) {
-        await completeQuiz();
+        await triggerComplete();
         return;
       }
 
@@ -126,19 +169,62 @@ export default function QuizScreen() {
         setOffset((o) => o + BATCH_SIZE);
       }
     },
-    [photos, offset, totalAvailable, yesCount, recordSwipe, completeQuiz]
+    [photos, offset, totalAvailable, yesCount, recordSwipe, triggerComplete]
   );
 
-  const progress = Math.min(yesCount / TARGET_YES, 1);
+  const handleResetDislikes = async () => {
+    setResettingDislikes(true);
+    try {
+      await fetch(`${API_BASE}/api/swipes/dislikes`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Reset pagination and reload photos
+      setPhotos([]);
+      setOffset(0);
+      setTotalAvailable(null);
+      isLoadingMore.current = false;
+      await refetch();
+    } catch {}
+    setResettingDislikes(false);
+  };
+
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
   if (!isLoggedIn) return null;
+
+  // Waiting for persisted count to load before rendering
+  if (yesCount === null) {
+    return (
+      <View style={[s.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   if (completing) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[s.completingText, { color: colors.mutedForeground }]}>Building your style profile…</Text>
+      </View>
+    );
+  }
+
+  if (completionError) {
+    return (
+      <View style={[s.center, { backgroundColor: colors.background }]}>
+        <View style={[s.doneIcon, { backgroundColor: "#E05A4520" }]}>
+          <Ionicons name="alert-circle-outline" size={40} color="#E05A45" />
+        </View>
+        <Text style={[s.doneTitle, { color: colors.foreground }]}>Something went wrong</Text>
+        <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>{completionError}</Text>
+        <Pressable
+          style={[s.actionBtn, { backgroundColor: colors.primary }]}
+          onPress={triggerComplete}
+        >
+          <Text style={[s.actionBtnText, { color: colors.primaryForeground }]}>Try Again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -151,20 +237,34 @@ export default function QuizScreen() {
     );
   }
 
+  // Photos exhausted before reaching 25 yes — offer to reload dislikes
   if (photos.length === 0 && !isLoading) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <View style={[s.doneIcon, { backgroundColor: colors.primary + "20" }]}>
           <Ionicons name="images-outline" size={40} color={colors.primary} />
         </View>
-        <Text style={[s.doneTitle, { color: colors.foreground }]}>More photos coming soon</Text>
+        <Text style={[s.doneTitle, { color: colors.foreground }]}>You've seen them all!</Text>
         <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
-          You've seen all available photos.{"\n"}You need {TARGET_YES - yesCount} more loves to complete the quiz.{"\n"}Check back when new rooms are added!
+          {yesCount} loved so far — need {TARGET_YES - yesCount} more.{"\n"}
+          Load skipped photos to keep going.
         </Text>
+        <Pressable
+          style={[s.actionBtn, { backgroundColor: colors.primary }]}
+          onPress={handleResetDislikes}
+          disabled={resettingDislikes}
+        >
+          {resettingDislikes ? (
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
+          ) : (
+            <Text style={[s.actionBtnText, { color: colors.primaryForeground }]}>Load Skipped Photos</Text>
+          )}
+        </Pressable>
       </View>
     );
   }
 
+  const progress = Math.min((yesCount ?? 0) / TARGET_YES, 1);
   const cardHeight = SCREEN_HEIGHT * 0.62;
 
   return (
@@ -263,6 +363,6 @@ const s = StyleSheet.create({
   doneIcon: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
   doneTitle: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   doneSubtitle: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 24 },
-  continueBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 8 },
-  continueBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  actionBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 180, alignItems: "center" },
+  actionBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

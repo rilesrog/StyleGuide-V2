@@ -211,6 +211,15 @@ router.delete("/swipes", requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// DELETE /swipes/dislikes — clear only disliked swipes so those photos re-enter the quiz pool
+router.delete("/swipes/dislikes", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  await db.delete(swipesTable).where(
+    and(eq(swipesTable.userId, userId), eq(swipesTable.liked, false))
+  );
+  res.json({ success: true });
+});
+
 router.get("/style-profile", requireAuth, async (req, res) => {
   const userId = req.userId!;
 

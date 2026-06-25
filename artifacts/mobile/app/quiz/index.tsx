@@ -264,24 +264,12 @@ export default function QuizScreen() {
   }
 
   const progress = Math.min((yesCount ?? 0) / TARGET_YES, 1);
-  const bottomPad = insets.bottom + (Platform.OS === "web" ? 90 : 80);
+  const bottomPad = insets.bottom + 8;
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       <View style={[s.header, { paddingTop: topInset + 8 }]}>
-        <View style={s.headerTop}>
-          <View>
-            <Text style={[s.headerTitle, { color: colors.foreground }]}>Style Quiz</Text>
-            <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
-              Swipe or tap to rate rooms
-            </Text>
-          </View>
-          <View style={[s.countBadge, { backgroundColor: colors.primary + "20" }]}>
-            <Text style={[s.countText, { color: colors.primary }]}>
-              {yesCount}<Text style={[s.countGoal, { color: colors.primary + "99" }]}>/{TARGET_YES}</Text>
-            </Text>
-          </View>
-        </View>
+        <Text style={[s.headerTitle, { color: colors.foreground }]}>Discover your aesthetic</Text>
 
         <View style={[s.progressTrack, { backgroundColor: colors.border }]}>
           <View

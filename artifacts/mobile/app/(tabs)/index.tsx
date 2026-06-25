@@ -118,7 +118,7 @@ export default function DiscoverScreen() {
   if (!isLoggedIn) return null;
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background }]}>
+    <View style={[s.container, { backgroundColor: colors.background, paddingTop: topInset + 20 }]}>
       {photosLoading && photos.length === 0 ? (
         <View style={s.center}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -135,7 +135,7 @@ export default function DiscoverScreen() {
         </View>
       ) : (
         <>
-          <View style={[s.deckArea, { paddingTop: topInset + 20 }]}>
+          <View style={s.deckArea}>
             {photos.length >= 2 && (
               <SwipeCard
                 key={photos[1].id + "_behind"}

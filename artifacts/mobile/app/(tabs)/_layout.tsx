@@ -66,6 +66,7 @@ function ClassicTabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="person" tintColor={color} size={24} />
@@ -78,7 +79,7 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Discover",
-          tabBarStyle: { display: "none" },
+          tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="sparkles" tintColor={color} size={24} />
@@ -91,6 +92,7 @@ function ClassicTabLayout() {
         name="boards"
         options={{
           title: "Boards",
+          tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="square.grid.2x2" tintColor={color} size={24} />

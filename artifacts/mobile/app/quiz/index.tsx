@@ -2,7 +2,6 @@ import { useGetStylePhotos, useRecordSwipe } from "@workspace/api-client-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,11 +13,10 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { SwipeCard } from "@/components/SwipeCard";
+import { SwipeCard, type SwipeCardRef } from "@/components/SwipeCard";
 import { useUser } from "@/context/UserContext";
 import { useQueryClient } from "@tanstack/react-query";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 const BATCH_SIZE = 20;
 const TARGET_YES = 25;
 
@@ -49,6 +47,7 @@ export default function QuizScreen() {
   const [resettingDislikes, setResettingDislikes] = useState(false);
   const isLoadingMore = useRef(false);
   const autoCompleteTriggered = useRef(false);
+  const topCardRef = useRef<SwipeCardRef>(null);
 
   // Guard: completed users should not access the quiz
   useEffect(() => {
@@ -220,7 +219,7 @@ export default function QuizScreen() {
         <Text style={[s.doneTitle, { color: colors.foreground }]}>Something went wrong</Text>
         <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>{completionError}</Text>
         <Pressable
-          style={[s.actionBtn, { backgroundColor: colors.primary }]}
+          style={[s.pillBtn, { backgroundColor: colors.primary }]}
           onPress={triggerComplete}
         >
           <Text style={[s.actionBtnText, { color: colors.primaryForeground }]}>Try Again</Text>
@@ -250,7 +249,7 @@ export default function QuizScreen() {
           Load skipped photos to keep going.
         </Text>
         <Pressable
-          style={[s.actionBtn, { backgroundColor: colors.primary }]}
+          style={[s.pillBtn, { backgroundColor: colors.primary }]}
           onPress={handleResetDislikes}
           disabled={resettingDislikes}
         >
@@ -265,7 +264,7 @@ export default function QuizScreen() {
   }
 
   const progress = Math.min((yesCount ?? 0) / TARGET_YES, 1);
-  const cardHeight = SCREEN_HEIGHT * 0.62;
+  const bottomPad = insets.bottom + (Platform.OS === "web" ? 90 : 80);
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -274,7 +273,7 @@ export default function QuizScreen() {
           <View>
             <Text style={[s.headerTitle, { color: colors.foreground }]}>Style Quiz</Text>
             <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
-              Swipe right on rooms you love
+              Swipe or tap to rate rooms
             </Text>
           </View>
           <View style={[s.countBadge, { backgroundColor: colors.primary + "20" }]}>
@@ -294,7 +293,7 @@ export default function QuizScreen() {
         </View>
       </View>
 
-      <View style={[s.deckArea, { height: cardHeight }]}>
+      <View style={s.deckArea}>
         {photos.length >= 2 && (
           <SwipeCard
             key={photos[1].id + "_behind"}
@@ -307,6 +306,7 @@ export default function QuizScreen() {
         )}
         {photos.length >= 1 && (
           <SwipeCard
+            ref={topCardRef}
             key={photos[0].id}
             photoUrl={photos[0].url}
             tags={photos[0].tags}
@@ -317,14 +317,21 @@ export default function QuizScreen() {
         )}
       </View>
 
-      <View style={[s.actions, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16 }]}>
-        <View style={[s.hintBox, { backgroundColor: colors.card }]}>
-          <Ionicons name="close" size={18} color="#E05A45" />
-          <Text style={[s.hint, { color: colors.mutedForeground }]}>skip</Text>
-          <View style={s.hintDivider} />
-          <Text style={[s.hint, { color: colors.mutedForeground }]}>love it</Text>
-          <Ionicons name="heart" size={18} color="#4CAF7A" />
-        </View>
+      <View style={[s.actionBar, { paddingBottom: bottomPad }]}>
+        <Pressable
+          style={[s.actionBtn, { backgroundColor: colors.card, borderColor: "#E05A45", borderWidth: 2 }]}
+          onPress={() => topCardRef.current?.triggerSwipe(false)}
+          hitSlop={12}
+        >
+          <Ionicons name="close" size={30} color="#E05A45" />
+        </Pressable>
+        <Pressable
+          style={[s.actionBtn, { backgroundColor: colors.primary }]}
+          onPress={() => topCardRef.current?.triggerSwipe(true)}
+          hitSlop={12}
+        >
+          <Ionicons name="heart" size={26} color={colors.primaryForeground} />
+        </Pressable>
       </View>
     </View>
   );
@@ -343,26 +350,35 @@ const s = StyleSheet.create({
   progressTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 3 },
   deckArea: {
+    flex: 1,
     marginHorizontal: 16,
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
   },
-  actions: { paddingHorizontal: 24, paddingTop: 16, alignItems: "center" },
-  hintBox: {
+  actionBar: {
     flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    gap: 48,
+    paddingTop: 16,
   },
-  hint: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  hintDivider: { width: 1, height: 14, backgroundColor: "#00000020", marginHorizontal: 4 },
   completingText: { fontSize: 15, fontFamily: "Inter_400Regular", marginTop: 8 },
   doneIcon: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
   doneTitle: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   doneSubtitle: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 24 },
-  actionBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 180, alignItems: "center" },
+  actionBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pillBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 180, alignItems: "center" },
   actionBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -36,7 +35,7 @@ export default function QuizScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isLoggedIn, token } = useUser();
+  const { isLoggedIn, token, quizCompleted } = useUser();
   const queryClient = useQueryClient();
 
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -45,6 +44,13 @@ export default function QuizScreen() {
   const [yesCount, setYesCount] = useState(0);
   const [completing, setCompleting] = useState(false);
   const isLoadingMore = useRef(false);
+
+  // Guard: completed users should not access the quiz
+  useEffect(() => {
+    if (quizCompleted) {
+      router.replace("/(tabs)");
+    }
+  }, [quizCompleted]);
 
   const { data: photosData, isLoading } = useGetStylePhotos(
     { limit: BATCH_SIZE, offset },
@@ -151,16 +157,10 @@ export default function QuizScreen() {
         <View style={[s.doneIcon, { backgroundColor: colors.primary + "20" }]}>
           <Ionicons name="images-outline" size={40} color={colors.primary} />
         </View>
-        <Text style={[s.doneTitle, { color: colors.foreground }]}>No more photos!</Text>
+        <Text style={[s.doneTitle, { color: colors.foreground }]}>More photos coming soon</Text>
         <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
-          You've seen all available photos.{"\n"}Tap below to continue with your current selections.
+          You've seen all available photos.{"\n"}You need {TARGET_YES - yesCount} more loves to complete the quiz.{"\n"}Check back when new rooms are added!
         </Text>
-        <Pressable
-          style={[s.continueBtn, { backgroundColor: colors.primary }]}
-          onPress={completeQuiz}
-        >
-          <Text style={[s.continueBtnText, { color: colors.primaryForeground }]}>Continue Anyway</Text>
-        </Pressable>
       </View>
     );
   }

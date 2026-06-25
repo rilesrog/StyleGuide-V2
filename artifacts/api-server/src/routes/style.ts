@@ -92,7 +92,18 @@ interface StyleResult {
   styleTags: string[];
 }
 
-function deriveStyleResult(tagCounts: Record<string, number>, likedCount: number): StyleResult {
+// Fallback pools used to pad results to minimum cardinality
+const FALLBACK_COLORS: ColorEntry[] = [
+  { name: "Warm White", hex: "#F5F1EC" },
+  { name: "Greige", hex: "#CAC1B5" },
+  { name: "Warm Sand", hex: "#D9C5A0" },
+  { name: "Soft Sage", hex: "#9BAF8E" },
+  { name: "Slate", hex: "#6B7280" },
+];
+const FALLBACK_MATERIALS = ["Natural Wood", "Linen", "Cotton", "Stone", "Wool", "Ceramic"];
+const FALLBACK_STYLE_TAGS = ["Timeless", "Comfortable", "Inviting", "Layered", "Natural", "Considered", "Calm", "Personal", "Warm", "Effortless"];
+
+function deriveStyleResult(tagCounts: Record<string, number>): StyleResult {
   const sorted = Object.entries(tagCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([tag]) => tag);
@@ -125,10 +136,19 @@ function deriveStyleResult(tagCounts: Record<string, number>, likedCount: number
     }
   }
 
-  // Fallback if we don't have enough
-  if (colorPalette.length === 0) colorPalette.push({ name: "Warm White", hex: "#F5F1EC" }, { name: "Greige", hex: "#CAC1B5" });
-  if (materials.length === 0) materials.push("Natural Wood", "Linen");
-  if (styleTags.length === 0) styleTags.push("Timeless", "Comfortable");
+  // Enforce minimum cardinalities: 3 colors, 4 materials, 6 style tags
+  for (const c of FALLBACK_COLORS) {
+    if (colorPalette.length >= 3) break;
+    if (!seenColors.has(c.hex)) { seenColors.add(c.hex); colorPalette.push(c); }
+  }
+  for (const m of FALLBACK_MATERIALS) {
+    if (materials.length >= 4) break;
+    if (!seenMaterials.has(m)) { seenMaterials.add(m); materials.push(m); }
+  }
+  for (const s of FALLBACK_STYLE_TAGS) {
+    if (styleTags.length >= 6) break;
+    if (!seenStyleTags.has(s)) { seenStyleTags.add(s); styleTags.push(s); }
+  }
 
   return { colorPalette, materials, styleTags };
 }
@@ -245,6 +265,18 @@ router.get("/style-profile", requireAuth, async (req, res) => {
 router.post("/style-profile/complete", requireAuth, async (req, res) => {
   const userId = req.userId!;
 
+  // One-time only: reject if already completed
+  const existingUser = await db
+    .select({ quizCompletedAt: usersTable.quizCompletedAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (existingUser[0]?.quizCompletedAt) {
+    res.status(409).json({ error: "Quiz already completed" });
+    return;
+  }
+
   const likedPhotos = await db
     .select({ tags: stylePhotosTable.tags })
     .from(swipesTable)
@@ -259,7 +291,7 @@ router.post("/style-profile/complete", requireAuth, async (req, res) => {
     }
   }
 
-  const styleResult = deriveStyleResult(tagCounts, likedCount);
+  const styleResult = deriveStyleResult(tagCounts);
 
   await db
     .insert(styleProfilesTable)

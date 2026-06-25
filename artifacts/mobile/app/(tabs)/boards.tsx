@@ -144,7 +144,7 @@ export default function BoardsScreen() {
                 thumbnails={board.thumbnails}
                 isDefault={board.isDefault}
                 colors={colors}
-                onPress={() => router.push(`/board/${board.id}`)}
+                onPress={() => router.push({ pathname: `/board/${board.id}`, params: { name: board.name } })}
               />
             ))}
 

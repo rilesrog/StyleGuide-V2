@@ -52,7 +52,7 @@ type Product = {
 };
 
 export default function BoardDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, name: routeName } = useLocalSearchParams<{ id: string; name?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -78,13 +78,13 @@ export default function BoardDetailScreen() {
     try {
       if (isPartnerBoard) {
         if (!sessionId) { setProducts([]); return; }
-        const resp = await fetch(`${API_BASE}/api/products/board?sessionId=${sessionId}`, {
+        // Use session matches endpoint — guarantees both users liked the product
+        const resp = await fetch(`${API_BASE}/api/sessions/${sessionId}/matches`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (resp.ok) {
           const data = await resp.json();
-          const all = (data as { products: Product[] }).products ?? [];
-          setProducts(all.filter((p) => p.likedByPartner));
+          setProducts((data as { products: Product[] }).products ?? []);
         }
       } else {
         const resp = await fetch(`${API_BASE}/api/boards/${boardId}/items`, {
@@ -152,9 +152,7 @@ export default function BoardDetailScreen() {
 
   const boardTitle = isPartnerBoard
     ? `With ${session?.partner?.name ?? "Partner"}`
-    : products.length >= 0
-    ? undefined
-    : "Board";
+    : (routeName ?? "Board");
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>

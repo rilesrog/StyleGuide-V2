@@ -180,8 +180,8 @@ router.post("/product-swipes", requireAuth, async (req, res) => {
     })
     .returning();
 
-  // When a solo (no session) like is recorded, add the product to the user's default board
-  if (liked && !sessionId) {
+  // When a product is liked, add it to the user's default Saved board (solo or session)
+  if (liked) {
     try {
       const boardId = await ensureDefaultBoard(userId);
       const existing = await db

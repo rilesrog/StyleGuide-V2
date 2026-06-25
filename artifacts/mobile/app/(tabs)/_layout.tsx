@@ -96,6 +96,8 @@ function ClassicTabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarShowLabel: false,
+        tabBarLabelStyle: { height: 0, overflow: "hidden", fontSize: 0 },
       }}
     >
       <Tabs.Screen

@@ -7,6 +7,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useUser } from "@/context/UserContext";
 
 function NativeTabLayout() {
   return (
@@ -26,10 +27,20 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const { quizCompleted } = useUser();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+
+  const visibleTabBarStyle = {
+    position: "absolute" as const,
+    backgroundColor: isIOS ? "transparent" : colors.background,
+    borderTopWidth: isWeb ? 1 : 0,
+    borderTopColor: colors.border,
+    elevation: 0,
+    ...(isWeb ? { height: 64 } : {}),
+  };
 
   return (
     <Tabs
@@ -38,14 +49,7 @@ function ClassicTabLayout() {
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: colors.border,
-          elevation: 0,
-          ...(isWeb ? { height: 64 } : {}),
-        },
+        tabBarStyle: quizCompleted ? visibleTabBarStyle : { display: "none" },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView

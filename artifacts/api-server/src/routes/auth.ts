@@ -155,7 +155,12 @@ router.post("/auth/magic-link", async (req, res) => {
 
   if (error) {
     console.error("Supabase magic link error:", error);
-    res.status(500).json({ error: "Failed to send magic link. Please try again." });
+    const isRateLimit = error.status === 429 || error.code === "over_email_send_rate_limit";
+    res.status(isRateLimit ? 429 : 500).json({
+      error: isRateLimit
+        ? "Too many emails sent. Please wait a minute and try again."
+        : "Failed to send magic link. Please try again.",
+    });
     return;
   }
 

@@ -112,7 +112,7 @@ export default function DiscoverScreen() {
   );
 
   const s = stylesheet(colors);
-  const bottomPad = insets.bottom + (Platform.OS === "web" ? 90 : 80);
+  const bottomPad = insets.bottom + 24;
 
   if (!isLoggedIn) return null;
 

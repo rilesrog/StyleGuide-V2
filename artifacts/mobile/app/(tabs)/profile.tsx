@@ -225,9 +225,9 @@ export default function ProfileScreen() {
             </View>
             <Pressable
               style={[s.sessionSmallBtn, { borderColor: colors.primary }]}
-              onPress={() => router.push("/(tabs)/matches")}
+              onPress={() => router.push("/(tabs)/boards")}
             >
-              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Matches</Text>
+              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Boards</Text>
             </Pressable>
           </View>
         )}

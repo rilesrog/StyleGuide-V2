@@ -52,7 +52,7 @@ export default function JoinSessionScreen() {
         const data: ActiveSession = await resp.json();
         joinAndSetSession(data);
         setStatus("success");
-        setTimeout(() => router.replace("/(tabs)/matches"), 1200);
+        setTimeout(() => router.replace("/(tabs)/boards"), 1200);
       } catch {
         setErrorMsg("Network error. Please try again.");
         setStatus("error");

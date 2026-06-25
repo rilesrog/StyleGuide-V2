@@ -104,11 +104,11 @@ export default function InviteScreen() {
           </Text>
           <Pressable
             style={[s.primaryBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.replace("/(tabs)/matches")}
+            onPress={() => router.replace("/(tabs)/boards")}
           >
             <Ionicons name="heart" size={18} color={colors.primaryForeground} />
             <Text style={[s.primaryBtnText, { color: colors.primaryForeground }]}>
-              View Matches
+              View Boards
             </Text>
           </Pressable>
         </View>

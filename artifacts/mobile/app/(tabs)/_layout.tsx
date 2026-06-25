@@ -15,17 +15,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "sparkles", selected: "sparkles.fill" }} />
         <Label>Discover</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="shop">
-        <Icon sf={{ default: "bag", selected: "bag.fill" }} />
-        <Label>Shop</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="matches">
-        <Icon sf={{ default: "heart.circle", selected: "heart.circle.fill" }} />
-        <Label>Matches</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="board">
+      <NativeTabs.Trigger name="boards">
         <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
-        <Label>Board</Label>
+        <Label>Boards</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -81,33 +73,9 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="shop"
+        name="boards"
         options={{
-          title: "Shop",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="bag" tintColor={color} size={24} />
-            ) : (
-              <Ionicons name="bag-outline" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="matches"
-        options={{
-          title: "Matches",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="heart.circle" tintColor={color} size={24} />
-            ) : (
-              <Ionicons name="heart-circle-outline" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="board"
-        options={{
-          title: "Board",
+          title: "Boards",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="square.grid.2x2" tintColor={color} size={24} />
@@ -128,6 +96,9 @@ function ClassicTabLayout() {
             ),
         }}
       />
+      <Tabs.Screen name="shop" options={{ href: null }} />
+      <Tabs.Screen name="matches" options={{ href: null }} />
+      <Tabs.Screen name="board" options={{ href: null }} />
     </Tabs>
   );
 }

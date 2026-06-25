@@ -112,7 +112,7 @@ export default function DiscoverScreen() {
   );
 
   const s = stylesheet(colors);
-  const bottomPad = insets.bottom + 24;
+  const bottomPad = insets.bottom + 8;
 
   if (!isLoggedIn) return null;
 
@@ -189,7 +189,7 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
     center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 },
     header: {
       paddingHorizontal: 24,
-      paddingBottom: 12,
+      paddingBottom: 6,
     },
     headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
     deckArea: {
@@ -204,7 +204,7 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
       justifyContent: "center",
       alignItems: "center",
       gap: 48,
-      paddingTop: 16,
+      paddingTop: 8,
     },
     actionBtn: {
       width: 64,

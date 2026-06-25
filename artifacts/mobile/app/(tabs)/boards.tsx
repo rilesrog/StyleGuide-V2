@@ -48,7 +48,8 @@ type StylePhoto = {
 
 type StyleBoardData = {
   photos: StylePhoto[];
-  pending?: StylePhoto[];
+  myPending?: StylePhoto[];
+  theirPending?: StylePhoto[];
   matched?: StylePhoto[];
 };
 
@@ -151,9 +152,11 @@ export default function BoardsScreen() {
   const isRegistryWithPartner = isRegistry && isActive && session?.partner != null;
 
   const likedPhotos = styleBoard.photos ?? [];
-  const pendingPhotos = styleBoard.pending ?? [];
+  const myPendingPhotos = styleBoard.myPending ?? [];
+  const theirPendingPhotos = styleBoard.theirPending ?? [];
   const matchedPhotos = styleBoard.matched ?? [];
   const hasPhotos = likedPhotos.length > 0;
+  const hasSessionPhotos = myPendingPhotos.length > 0 || theirPendingPhotos.length > 0 || matchedPhotos.length > 0;
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -204,8 +207,29 @@ export default function BoardsScreen() {
                   </View>
                 )}
 
-                {/* Pending section */}
-                {pendingPhotos.length > 0 && (
+                {/* Partner liked, waiting for me */}
+                {theirPendingPhotos.length > 0 && (
+                  <View style={s.photoSection}>
+                    <View style={s.sectionHeader}>
+                      <Ionicons name="heart-outline" size={16} color={colors.primary} />
+                      <Text style={[s.sectionTitle, { color: colors.foreground }]}>
+                        {partnerName} loved — do you?
+                      </Text>
+                      <View style={[s.pill, { backgroundColor: colors.primary + "30" }]}>
+                        <Text style={[s.pillText, { color: colors.primary }]}>
+                          {theirPendingPhotos.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[s.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      {partnerName} liked these — find them in Discover to weigh in
+                    </Text>
+                    <PhotoGrid photos={theirPendingPhotos} thumbSize={PHOTO_THUMB} />
+                  </View>
+                )}
+
+                {/* I liked, waiting for partner */}
+                {myPendingPhotos.length > 0 && (
                   <View style={s.photoSection}>
                     <View style={s.sectionHeader}>
                       <Ionicons name="time-outline" size={16} color={colors.mutedForeground} />
@@ -214,18 +238,18 @@ export default function BoardsScreen() {
                       </Text>
                       <View style={[s.pill, { backgroundColor: colors.muted }]}>
                         <Text style={[s.pillText, { color: colors.mutedForeground }]}>
-                          {pendingPhotos.length}
+                          {myPendingPhotos.length}
                         </Text>
                       </View>
                     </View>
                     <Text style={[s.sectionSubtitle, { color: colors.mutedForeground }]}>
                       Photos you liked — waiting for {partnerName} to decide
                     </Text>
-                    <PhotoGrid photos={pendingPhotos} thumbSize={PHOTO_THUMB} dimmed />
+                    <PhotoGrid photos={myPendingPhotos} thumbSize={PHOTO_THUMB} dimmed />
                   </View>
                 )}
 
-                {matchedPhotos.length === 0 && pendingPhotos.length === 0 && (
+                {!hasSessionPhotos && (
                   <View style={[s.photoEmpty, { borderColor: colors.border }]}>
                     <Ionicons name="heart-outline" size={32} color={colors.mutedForeground} />
                     <Text style={[s.photoEmptyText, { color: colors.mutedForeground }]}>

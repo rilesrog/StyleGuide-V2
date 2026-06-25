@@ -286,6 +286,23 @@ router.post("/swipes", requireAuth, async (req, res) => {
     return;
   }
 
+  // If a sessionId is provided, verify the caller is a member of that session
+  if (sessionId != null) {
+    const sessionRows = await db
+      .select({ createdBy: sessionsTable.createdBy, partnerId: sessionsTable.partnerId })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, Number(sessionId)));
+    if (!sessionRows.length) {
+      res.status(400).json({ error: "Session not found" });
+      return;
+    }
+    const s = sessionRows[0];
+    if (s.createdBy !== userId && s.partnerId !== userId) {
+      res.status(403).json({ error: "Not a member of this session" });
+      return;
+    }
+  }
+
   const [swipe] = await db
     .insert(swipesTable)
     .values({
@@ -426,8 +443,8 @@ router.get("/style-board", requireAuth, async (req, res) => {
     source: stylePhotosTable.source,
   };
 
-  // All photos this user has liked (any session)
-  const likedPhotos = await db
+  // All photos this user has liked (any session) — used for non-session board
+  const allLikedPhotos = await db
     .select(photoFields)
     .from(swipesTable)
     .innerJoin(stylePhotosTable, eq(swipesTable.photoId, stylePhotosTable.id))
@@ -436,7 +453,7 @@ router.get("/style-board", requireAuth, async (req, res) => {
 
   // If no sessionId requested, return simple list (backward-compatible)
   if (!sessionId) {
-    res.json({ photos: likedPhotos });
+    res.json({ photos: allLikedPhotos });
     return;
   }
 
@@ -447,7 +464,7 @@ router.get("/style-board", requireAuth, async (req, res) => {
     .where(eq(sessionsTable.id, sessionId));
 
   if (!sessionRows.length) {
-    res.json({ photos: likedPhotos, pending: [], matched: [] });
+    res.json({ photos: allLikedPhotos, myPending: [], theirPending: [], matched: [] });
     return;
   }
 
@@ -459,24 +476,52 @@ router.get("/style-board", requireAuth, async (req, res) => {
 
   // No partner yet — everything is just "liked", nothing pending or matched
   if (!session.partnerId) {
-    res.json({ photos: likedPhotos, pending: likedPhotos, matched: [] });
+    res.json({ photos: allLikedPhotos, myPending: allLikedPhotos, theirPending: [], matched: [] });
     return;
   }
 
   const partnerId = session.createdBy === userId ? session.partnerId : session.createdBy;
 
-  // Partner's liked photo IDs (any session)
-  const partnerLikes = await db
-    .select({ photoId: swipesTable.photoId })
-    .from(swipesTable)
-    .where(and(eq(swipesTable.userId, partnerId), eq(swipesTable.liked, true)));
+  // Session-scoped: only swipes recorded under this session
+  const [mySessionSwipes, partnerSessionSwipes] = await Promise.all([
+    db
+      .select({ photoId: swipesTable.photoId, liked: swipesTable.liked })
+      .from(swipesTable)
+      .where(and(eq(swipesTable.userId, userId), eq(swipesTable.sessionId, sessionId))),
+    db
+      .select({ photoId: swipesTable.photoId, liked: swipesTable.liked })
+      .from(swipesTable)
+      .where(and(eq(swipesTable.userId, partnerId), eq(swipesTable.sessionId, sessionId))),
+  ]);
 
-  const partnerLikedSet = new Set(partnerLikes.map((r) => r.photoId));
+  const myLikedIds = new Set(mySessionSwipes.filter((s) => s.liked).map((s) => s.photoId));
+  const mySwipedIds = new Set(mySessionSwipes.map((s) => s.photoId));
+  const partnerLikedIds = new Set(partnerSessionSwipes.filter((s) => s.liked).map((s) => s.photoId));
+  const partnerSwipedIds = new Set(partnerSessionSwipes.map((s) => s.photoId));
 
-  const matched = likedPhotos.filter((p) => partnerLikedSet.has(p.id));
-  const pending = likedPhotos.filter((p) => !partnerLikedSet.has(p.id));
+  // Matched: both liked in this session
+  const matchedIds = [...myLikedIds].filter((id) => partnerLikedIds.has(id));
+  // My pending: I liked in session, partner has not swiped yet in this session
+  const myPendingIds = [...myLikedIds].filter((id) => !partnerSwipedIds.has(id));
+  // Their pending: partner liked in session, I have not swiped yet in this session
+  const theirPendingIds = [...partnerLikedIds].filter((id) => !mySwipedIds.has(id));
 
-  res.json({ photos: likedPhotos, pending, matched });
+  // Fetch photo data for each set
+  const fetchPhotos = async (ids: number[]) => {
+    if (ids.length === 0) return [];
+    return db
+      .select(photoFields)
+      .from(stylePhotosTable)
+      .where(inArray(stylePhotosTable.id, ids));
+  };
+
+  const [matched, myPending, theirPending] = await Promise.all([
+    fetchPhotos(matchedIds),
+    fetchPhotos(myPendingIds),
+    fetchPhotos(theirPendingIds),
+  ]);
+
+  res.json({ photos: allLikedPhotos, myPending, theirPending, matched });
 });
 
 async function persistStyleProfile(userId: number) {

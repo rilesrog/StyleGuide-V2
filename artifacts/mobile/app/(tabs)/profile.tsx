@@ -1,5 +1,5 @@
 import { useGetStyleProfile } from "@workspace/api-client-react";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -18,6 +18,8 @@ import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
 import { useMode, type AppMode } from "@/context/ModeContext";
 
+type Segment = "you" | "style";
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -26,6 +28,7 @@ export default function ProfileScreen() {
   const { session, isActive, startSession, leaveSession } = useSession();
   const { mode, setMode } = useMode();
   const [startingSession, setStartingSession] = React.useState(false);
+  const [segment, setSegment] = useState<Segment>("you");
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
   const handleModeSelect = async (m: AppMode) => {
@@ -44,17 +47,17 @@ export default function ProfileScreen() {
     }
   };
 
-  const { data: profileData } = useGetStyleProfile({
-    query: { enabled: isLoggedIn, staleTime: 0 }
-  });
+  const { data: profileData, isLoading: profileLoading } = useGetStyleProfile({
+    query: { enabled: isLoggedIn, staleTime: 0 },
+  } as never);
 
   const tagWeights = (profileData?.tagWeights ?? []) as Array<{ tag: string; score: number; count: number }>;
   const totalSwipes = profileData?.totalSwipes ?? 0;
   const likedCount = profileData?.likedCount ?? 0;
-  const styleResult = profileData?.styleResult ?? null;
+  const styleResult = (profileData as { styleResult?: unknown })?.styleResult ?? null;
 
   const initials = name
-    ? name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    ? name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()
     : "?";
 
   const handleLogout = async () => {
@@ -64,402 +67,321 @@ export default function ProfileScreen() {
 
   const s = stylesheet(colors);
 
+  const colorPalette = (styleResult as { colorPalette?: Array<{ hex: string; name: string }> })?.colorPalette ?? [];
+  const materials = (styleResult as { materials?: string[] })?.materials ?? [];
+  const styleTags = (styleResult as { styleTags?: string[] })?.styleTags ?? [];
+
   return (
-    <ScrollView
-      style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: topInset + 8, paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[s.headerTitle, { color: colors.foreground }]}>Profile</Text>
-
-      <View style={[s.avatar, { backgroundColor: colors.primary }]}>
-        <Text style={[s.avatarText, { color: colors.primaryForeground }]}>{initials}</Text>
-      </View>
-
-      <Text style={[s.name, { color: colors.foreground }]}>{name ?? "User"}</Text>
-      <Text style={[s.email, { color: colors.mutedForeground }]}>{email ?? ""}</Text>
-
-      <View style={[s.statsRow, { backgroundColor: colors.card }]}>
-        <View style={s.stat}>
-          <Text style={[s.statNum, { color: colors.foreground }]}>{totalSwipes}</Text>
-          <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Swiped</Text>
-        </View>
-        <View style={[s.statDivider, { backgroundColor: colors.border }]} />
-        <View style={s.stat}>
-          <Text style={[s.statNum, { color: colors.foreground }]}>{likedCount}</Text>
-          <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Loved</Text>
-        </View>
-        <View style={[s.statDivider, { backgroundColor: colors.border }]} />
-        <View style={s.stat}>
-          <Text style={[s.statNum, { color: colors.foreground }]}>
-            {totalSwipes > 0 ? Math.round((likedCount / totalSwipes) * 100) : 0}%
-          </Text>
-          <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Match</Text>
-        </View>
-      </View>
-
-      {/* My Style */}
-      {styleResult && (
-        <View style={[s.section, { backgroundColor: colors.card }]}>
-          <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>My Style</Text>
-
-          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Color Palette</Text>
-          <View style={s.paletteRow}>
-            {styleResult.colorPalette.map((c, i) => (
-              <View key={i} style={s.paletteItem}>
-                <View style={[s.swatch, { backgroundColor: c.hex, borderColor: colors.border }]} />
-                <Text style={[s.swatchName, { color: colors.foreground }]} numberOfLines={2}>{c.name}</Text>
-              </View>
-            ))}
+    <View style={[s.root, { backgroundColor: colors.background }]}>
+      {/* ── Sticky header: avatar + name + segment toggle ── */}
+      <View style={[s.stickyHeader, { paddingTop: topInset + 8, backgroundColor: colors.background }]}>
+        <View style={s.identity}>
+          <View style={[s.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={[s.avatarText, { color: colors.primaryForeground }]}>{initials}</Text>
           </View>
-
-          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Materials</Text>
-          <View style={s.chipsWrap}>
-            {styleResult.materials.map((m, i) => (
-              <View key={i} style={[s.chip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Text style={[s.chipText, { color: colors.foreground }]}>{m}</Text>
-              </View>
-            ))}
-          </View>
-
-          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Aesthetic</Text>
-          <View style={s.chipsWrap}>
-            {styleResult.styleTags.map((t, i) => (
-              <View key={i} style={[s.chip, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
-                <Text style={[s.chipText, { color: colors.primary }]}>{t}</Text>
-              </View>
-            ))}
+          <View style={s.identityText}>
+            <Text style={[s.name, { color: colors.foreground }]} numberOfLines={1}>{name ?? "User"}</Text>
+            <Text style={[s.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email ?? ""}</Text>
           </View>
         </View>
-      )}
 
-      {/* Mode selector */}
-      <View style={[s.section, { backgroundColor: colors.card }]}>
-        <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Mode</Text>
-        <View style={[s.modeToggleRow, { backgroundColor: colors.muted }]}>
+        {/* Segment toggle */}
+        <View style={[s.segmentBar, { backgroundColor: colors.muted }]}>
           <Pressable
-            style={[s.modeOption, mode === "decoration" && { backgroundColor: colors.background }]}
-            onPress={() => handleModeSelect("decoration")}
+            style={[s.segmentOption, segment === "you" && { backgroundColor: colors.background }]}
+            onPress={() => setSegment("you")}
           >
-            <Ionicons
-              name="home-outline"
-              size={16}
-              color={mode === "decoration" ? colors.foreground : colors.mutedForeground}
-            />
-            <Text style={[s.modeOptionText, { color: mode === "decoration" ? colors.foreground : colors.mutedForeground }]}>
-              Home Decoration
-            </Text>
+            <Ionicons name="person-outline" size={14} color={segment === "you" ? colors.foreground : colors.mutedForeground} />
+            <Text style={[s.segmentText, { color: segment === "you" ? colors.foreground : colors.mutedForeground }]}>You</Text>
           </Pressable>
           <Pressable
-            style={[s.modeOption, mode === "registry" && { backgroundColor: colors.background }]}
-            onPress={() => handleModeSelect("registry")}
+            style={[s.segmentOption, segment === "style" && { backgroundColor: colors.background }]}
+            onPress={() => setSegment("style")}
           >
-            <Ionicons
-              name="gift-outline"
-              size={16}
-              color={mode === "registry" ? colors.foreground : colors.mutedForeground}
-            />
-            <Text style={[s.modeOptionText, { color: mode === "registry" ? colors.foreground : colors.mutedForeground }]}>
-              Wedding Registry
-            </Text>
+            <Ionicons name="color-palette-outline" size={14} color={segment === "style" ? colors.foreground : colors.mutedForeground} />
+            <Text style={[s.segmentText, { color: segment === "style" ? colors.foreground : colors.mutedForeground }]}>Style</Text>
           </Pressable>
         </View>
-        <Text style={[s.modeDescription, { color: colors.mutedForeground }]}>
-          {mode === "decoration"
-            ? "Sort liked products into room-by-room boards."
-            : "Both partners must approve an item for it to join the registry."}
-        </Text>
       </View>
 
-      {/* Shared session card */}
-      <View style={[s.section, { backgroundColor: colors.card }]}>
-        <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Shared Session</Text>
+      {/* ── You segment ── */}
+      {segment === "you" && (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Stats */}
+          <View style={[s.statsRow, { backgroundColor: colors.card }]}>
+            <View style={s.stat}>
+              <Text style={[s.statNum, { color: colors.foreground }]}>{totalSwipes}</Text>
+              <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Swiped</Text>
+            </View>
+            <View style={[s.statDivider, { backgroundColor: colors.border }]} />
+            <View style={s.stat}>
+              <Text style={[s.statNum, { color: colors.foreground }]}>{likedCount}</Text>
+              <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Loved</Text>
+            </View>
+            <View style={[s.statDivider, { backgroundColor: colors.border }]} />
+            <View style={s.stat}>
+              <Text style={[s.statNum, { color: colors.foreground }]}>
+                {totalSwipes > 0 ? Math.round((likedCount / totalSwipes) * 100) : 0}%
+              </Text>
+              <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Match</Text>
+            </View>
+          </View>
 
-        {!session && (
-          <Pressable
-            style={[s.sessionBtn, { backgroundColor: colors.primary }]}
-            onPress={handleStartSession}
-            disabled={startingSession}
-          >
-            {startingSession ? (
-              <ActivityIndicator size="small" color={colors.primaryForeground} />
-            ) : (
-              <Ionicons name="people-outline" size={18} color={colors.primaryForeground} />
+          {/* Mode selector */}
+          <View style={[s.section, { backgroundColor: colors.card }]}>
+            <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Mode</Text>
+            <View style={[s.modeRow, { backgroundColor: colors.muted }]}>
+              <Pressable
+                style={[s.modeOption, mode === "decoration" && { backgroundColor: colors.background }]}
+                onPress={() => handleModeSelect("decoration")}
+              >
+                <Ionicons name="home-outline" size={16} color={mode === "decoration" ? colors.foreground : colors.mutedForeground} />
+                <Text style={[s.modeOptionText, { color: mode === "decoration" ? colors.foreground : colors.mutedForeground }]}>
+                  Home Decoration
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[s.modeOption, mode === "registry" && { backgroundColor: colors.background }]}
+                onPress={() => handleModeSelect("registry")}
+              >
+                <Ionicons name="gift-outline" size={16} color={mode === "registry" ? colors.foreground : colors.mutedForeground} />
+                <Text style={[s.modeOptionText, { color: mode === "registry" ? colors.foreground : colors.mutedForeground }]}>
+                  Wedding Registry
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={[s.modeDesc, { color: colors.mutedForeground }]}>
+              {mode === "decoration"
+                ? "Sort liked products into room-by-room boards."
+                : "Both partners must approve an item for it to join the registry."}
+            </Text>
+          </View>
+
+          {/* Shared session */}
+          <View style={[s.section, { backgroundColor: colors.card }]}>
+            <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Shared Session</Text>
+
+            {!session && (
+              <Pressable
+                style={[s.sessionBtn, { backgroundColor: colors.primary }]}
+                onPress={handleStartSession}
+                disabled={startingSession}
+              >
+                {startingSession
+                  ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  : <Ionicons name="people-outline" size={18} color={colors.primaryForeground} />}
+                <Text style={[s.sessionBtnText, { color: colors.primaryForeground }]}>
+                  {startingSession ? "Creating…" : "Start a Session"}
+                </Text>
+              </Pressable>
             )}
-            <Text style={[s.sessionBtnText, { color: colors.primaryForeground }]}>
-              {startingSession ? "Creating…" : "Start a Session"}
-            </Text>
-          </Pressable>
-        )}
 
-        {session && !isActive && (
-          <View style={s.sessionStatus}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <View style={s.sessionStatusText}>
-              <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>
-                Waiting for partner
-              </Text>
-              <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>
-                Share the invite link to get started
-              </Text>
-            </View>
-            <Pressable
-              style={[s.sessionSmallBtn, { borderColor: colors.primary }]}
-              onPress={() => router.push("/invite")}
-            >
-              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Invite</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {session && isActive && (
-          <View style={s.sessionStatus}>
-            <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
-            <View style={s.sessionStatusText}>
-              <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>
-                Active with {session.partner?.name ?? "partner"}
-              </Text>
-              <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>
-                Swipe together to find matches
-              </Text>
-            </View>
-            <Pressable
-              style={[s.sessionSmallBtn, { borderColor: colors.primary }]}
-              onPress={() => router.push("/(tabs)/boards")}
-            >
-              <Text style={[s.sessionSmallBtnText, { color: colors.primary }]}>Boards</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {session && (
-          <Pressable onPress={leaveSession}>
-            <Text style={[s.endSessionText, { color: colors.mutedForeground }]}>
-              End session
-            </Text>
-          </Pressable>
-        )}
-      </View>
-
-      {tagWeights.length > 0 && (
-        <View style={[s.section, { backgroundColor: colors.card }]}>
-          <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Your Style DNA</Text>
-          {tagWeights.slice(0, 6).map((tw, i) => (
-            <View key={tw.tag} style={s.tagRow}>
-              <View style={s.tagRank}>
-                <Text style={[s.rankNum, { color: i < 3 ? colors.primary : colors.mutedForeground }]}>#{i + 1}</Text>
+            {session && !isActive && (
+              <View style={s.sessionStatus}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>Waiting for partner</Text>
+                  <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>Share the invite link to get started</Text>
+                </View>
+                <Pressable style={[s.smallBtn, { borderColor: colors.primary }]} onPress={() => router.push("/invite")}>
+                  <Text style={[s.smallBtnText, { color: colors.primary }]}>Invite</Text>
+                </Pressable>
               </View>
-              <Text style={[s.tagName, { color: colors.foreground }]}>{tw.tag}</Text>
-              <View style={[s.barTrack, { backgroundColor: colors.border }]}>
-                <View style={[s.barFill, { backgroundColor: colors.primary, width: `${Math.round(tw.score * 100)}%` }]} />
+            )}
+
+            {session && isActive && (
+              <View style={s.sessionStatus}>
+                <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[s.sessionStatusTitle, { color: colors.foreground }]}>Active with {session.partner?.name ?? "partner"}</Text>
+                  <Text style={[s.sessionStatusSub, { color: colors.mutedForeground }]}>Swipe together to find matches</Text>
+                </View>
+                <Pressable style={[s.smallBtn, { borderColor: colors.primary }]} onPress={() => router.push("/(tabs)/boards")}>
+                  <Text style={[s.smallBtnText, { color: colors.primary }]}>Boards</Text>
+                </Pressable>
               </View>
-              <Text style={[s.tagScore, { color: colors.mutedForeground }]}>{Math.round(tw.score * 100)}%</Text>
-            </View>
-          ))}
-        </View>
+            )}
+
+            {session && (
+              <Pressable onPress={leaveSession}>
+                <Text style={[s.endSession, { color: colors.mutedForeground }]}>End session</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Sign out */}
+          <Pressable style={[s.logoutBtn, { borderColor: colors.destructive + "60" }]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={colors.destructive} />
+            <Text style={[s.logoutText, { color: colors.destructive }]}>Sign Out</Text>
+          </Pressable>
+        </ScrollView>
       )}
 
-      {tagWeights.length === 0 && (
-        <View style={[s.section, { backgroundColor: colors.card, alignItems: "center", paddingVertical: 32 }]}>
-          <Ionicons name="sparkles-outline" size={32} color={colors.mutedForeground} />
-          <Text style={[s.emptyStyle, { color: colors.mutedForeground }]}>
-            Swipe some photos to build your style profile
-          </Text>
-        </View>
-      )}
+      {/* ── Style segment ── */}
+      {segment === "style" && (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 80 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {profileLoading && tagWeights.length === 0 ? (
+            <View style={s.center}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : tagWeights.length === 0 && !styleResult ? (
+            <View style={[s.emptyCard, { backgroundColor: colors.card }]}>
+              <Ionicons name="sparkles-outline" size={40} color={colors.mutedForeground} />
+              <Text style={[s.emptyTitle, { color: colors.foreground }]}>No style profile yet</Text>
+              <Text style={[s.emptyBody, { color: colors.mutedForeground }]}>
+                Swipe photos in the Inspire tab to build your style profile.
+              </Text>
+              <Pressable
+                style={[s.goBtn, { backgroundColor: colors.primary }]}
+                onPress={() => router.push("/(tabs)")}
+              >
+                <Ionicons name="sparkles-outline" size={16} color={colors.primaryForeground} />
+                <Text style={[s.goBtnText, { color: colors.primaryForeground }]}>Go to Discover</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              {/* Palette + aesthetic */}
+              {styleResult && (
+                <View style={[s.section, { backgroundColor: colors.card }]}>
+                  <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>My Style</Text>
 
-      <Pressable
-        style={[s.logoutBtn, { borderColor: colors.destructive + "60" }]}
-        onPress={handleLogout}
-      >
-        <Ionicons name="log-out-outline" size={20} color={colors.destructive} />
-        <Text style={[s.logoutText, { color: colors.destructive }]}>Sign Out</Text>
-      </Pressable>
-    </ScrollView>
+                  {colorPalette.length > 0 && (
+                    <>
+                      <Text style={[s.subLabel, { color: colors.foreground }]}>Color Palette</Text>
+                      <View style={s.paletteRow}>
+                        {colorPalette.map((c, i) => (
+                          <View key={i} style={s.paletteItem}>
+                            <View style={[s.swatch, { backgroundColor: c.hex, borderColor: colors.border }]} />
+                            <Text style={[s.swatchName, { color: colors.foreground }]} numberOfLines={2}>{c.name}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {materials.length > 0 && (
+                    <>
+                      <Text style={[s.subLabel, { color: colors.foreground }]}>Materials</Text>
+                      <View style={s.chips}>
+                        {materials.map((m: string, i: number) => (
+                          <View key={i} style={[s.chip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                            <Text style={[s.chipText, { color: colors.foreground }]}>{m}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {styleTags.length > 0 && (
+                    <>
+                      <Text style={[s.subLabel, { color: colors.foreground }]}>Aesthetic</Text>
+                      <View style={s.chips}>
+                        {styleTags.map((t: string, i: number) => (
+                          <View key={i} style={[s.chip, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                            <Text style={[s.chipText, { color: colors.primary }]}>{t}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </View>
+              )}
+
+              {/* Style DNA */}
+              {tagWeights.length > 0 && (
+                <View style={[s.section, { backgroundColor: colors.card }]}>
+                  <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Style DNA</Text>
+                  {tagWeights.slice(0, 8).map((tw, i) => (
+                    <View key={tw.tag} style={s.tagRow}>
+                      <View style={s.tagRank}>
+                        <Text style={[s.rankNum, { color: i < 3 ? colors.primary : colors.mutedForeground }]}>#{i + 1}</Text>
+                      </View>
+                      <Text style={[s.tagName, { color: colors.foreground }]}>{tw.tag}</Text>
+                      <View style={[s.barTrack, { backgroundColor: colors.border }]}>
+                        <View style={[s.barFill, { backgroundColor: colors.primary, width: `${Math.round(tw.score * 100)}%` }]} />
+                      </View>
+                      <Text style={[s.tagScore, { color: colors.mutedForeground }]}>{Math.round(tw.score * 100)}%</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
-function stylesheet(colors: ReturnType<typeof useColors>) {
+function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useColors>) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    content: {
+    root: { flex: 1 },
+    stickyHeader: {
       paddingHorizontal: 24,
-      alignItems: "center",
+      paddingBottom: 12,
       gap: 16,
     },
-    headerTitle: {
-      fontSize: 28,
-      fontFamily: "Inter_700Bold",
-      alignSelf: "flex-start",
-      marginBottom: 8,
+    identity: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
     },
     avatar: {
-      width: 88,
-      height: 88,
-      borderRadius: 44,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: "center",
       justifyContent: "center",
     },
-    avatarText: {
-      fontSize: 32,
-      fontFamily: "Inter_700Bold",
+    avatarText: { fontSize: 22, fontFamily: "Inter_700Bold" },
+    identityText: { flex: 1, gap: 2 },
+    name: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
+    email: { fontSize: 13, fontFamily: "Inter_400Regular" },
+    segmentBar: {
+      flexDirection: "row",
+      borderRadius: 20,
+      padding: 3,
+      gap: 2,
     },
-    name: {
-      fontSize: 22,
-      fontFamily: "Inter_600SemiBold",
-      marginTop: -4,
+    segmentOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 5,
+      paddingVertical: 9,
+      borderRadius: 18,
     },
-    email: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      marginTop: -8,
-    },
+    segmentText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 8, gap: 16 },
+    center: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
     statsRow: {
       flexDirection: "row",
       borderRadius: 20,
       paddingVertical: 20,
-      width: "100%",
     },
-    stat: {
-      flex: 1,
-      alignItems: "center",
-      gap: 4,
-    },
-    statNum: {
-      fontSize: 24,
-      fontFamily: "Inter_700Bold",
-    },
-    statLabel: {
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-    },
-    statDivider: {
-      width: 1,
-      marginVertical: 4,
-    },
-    section: {
-      borderRadius: 20,
-      padding: 20,
-      width: "100%",
-      gap: 14,
-    },
+    stat: { flex: 1, alignItems: "center", gap: 4 },
+    statNum: { fontSize: 24, fontFamily: "Inter_700Bold" },
+    statLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+    statDivider: { width: 1, marginVertical: 4 },
+    section: { borderRadius: 20, padding: 20, gap: 14 },
     sectionTitle: {
       fontSize: 12,
       fontFamily: "Inter_500Medium",
       textTransform: "uppercase",
       letterSpacing: 1,
     },
-    tagRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-    tagRank: {
-      width: 28,
-    },
-    rankNum: {
-      fontSize: 12,
-      fontFamily: "Inter_600SemiBold",
-    },
-    tagName: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      textTransform: "capitalize",
-      width: 80,
-    },
-    barTrack: {
-      flex: 1,
-      height: 6,
-      borderRadius: 3,
-      overflow: "hidden",
-    },
-    barFill: {
-      height: "100%",
-      borderRadius: 3,
-    },
-    tagScore: {
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-      width: 34,
-      textAlign: "right",
-    },
-    emptyStyle: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      lineHeight: 22,
-      marginTop: 8,
-    },
-    logoutBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      width: "100%",
-      justifyContent: "center",
-      marginTop: 8,
-    },
-    logoutText: {
-      fontSize: 16,
-      fontFamily: "Inter_500Medium",
-    },
-    sessionBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingVertical: 14,
-      borderRadius: 14,
-      width: "100%",
-    },
-    sessionBtnText: {
-      fontSize: 15,
-      fontFamily: "Inter_600SemiBold",
-    },
-    sessionStatus: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    sessionStatusText: {
-      flex: 1,
-      gap: 2,
-    },
-    sessionStatusTitle: {
-      fontSize: 14,
-      fontFamily: "Inter_600SemiBold",
-    },
-    sessionStatusSub: {
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-    },
-    sessionSmallBtn: {
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 10,
-      borderWidth: 1.5,
-    },
-    sessionSmallBtnText: {
-      fontSize: 13,
-      fontFamily: "Inter_600SemiBold",
-    },
-    endSessionText: {
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      textDecorationLine: "underline",
-    },
-    modeToggleRow: {
-      flexDirection: "row",
-      borderRadius: 12,
-      padding: 4,
-      gap: 4,
-    },
+    subLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", marginTop: 4 },
+    modeRow: { flexDirection: "row", borderRadius: 12, padding: 4, gap: 4 },
     modeOption: {
       flex: 1,
       flexDirection: "row",
@@ -469,46 +391,77 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       paddingVertical: 10,
       borderRadius: 10,
     },
-    modeOptionText: {
-      fontSize: 13,
-      fontFamily: "Inter_600SemiBold",
+    modeOptionText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+    modeDesc: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+    sessionBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 14,
     },
-    modeDescription: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-      lineHeight: 19,
-    },
-    myStyleSubLabel: {
+    sessionBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+    sessionStatus: { flexDirection: "row", alignItems: "center", gap: 12 },
+    sessionStatusTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    sessionStatusSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+    smallBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5 },
+    smallBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+    endSession: {
       fontSize: 12,
-      fontFamily: "Inter_600SemiBold",
-      marginTop: 4,
-    },
-    paletteRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    paletteItem: { alignItems: "center", gap: 4, minWidth: 52, maxWidth: 68 },
-    swatch: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      borderWidth: 1,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    swatchName: {
-      fontSize: 10,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
-      lineHeight: 13,
+      textDecorationLine: "underline",
     },
-    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 18,
-      borderWidth: 1,
+    logoutBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      justifyContent: "center",
+      marginTop: 8,
     },
+    logoutText: { fontSize: 16, fontFamily: "Inter_500Medium" },
+    emptyCard: {
+      borderRadius: 20,
+      padding: 32,
+      alignItems: "center",
+      gap: 12,
+      marginTop: 8,
+    },
+    emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+    emptyBody: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    goBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 24,
+      marginTop: 4,
+    },
+    goBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    paletteRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    paletteItem: { alignItems: "center", gap: 4, minWidth: 52, maxWidth: 68 },
+    swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 1 },
+    swatchName: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
+    chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1 },
     chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+    tagRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    tagRank: { width: 28 },
+    rankNum: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    tagName: { fontSize: 14, fontFamily: "Inter_400Regular", textTransform: "capitalize", width: 80 },
+    barTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+    barFill: { height: "100%", borderRadius: 3 },
+    tagScore: { fontSize: 12, fontFamily: "Inter_400Regular", width: 34, textAlign: "right" },
   });
 }

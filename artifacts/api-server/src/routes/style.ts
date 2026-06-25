@@ -155,6 +155,88 @@ function deriveStyleResult(tagCounts: Record<string, number>): StyleResult {
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
+// ─── POST /api/photos/import ─────────────────────────────────────────────────
+// Admin/seed endpoint: bulk-insert curated style photos.
+// Body: { photos: Array<{ url: string; tags: string[]; source?: string }> }
+// Skips photos whose URL already exists in the DB (idempotent).
+//
+// Access control:
+//   - Development (NODE_ENV !== 'production'): open (no auth required).
+//   - Production with SEED_SECRET set: requires "Authorization: Bearer <secret>".
+//   - Production without SEED_SECRET set: always returns 403 (disabled).
+//
+// Usage example (development):
+//   curl -X POST http://localhost:8080/api/photos/import \
+//     -H "Content-Type: application/json" \
+//     -d '{"photos":[{"url":"https://...","tags":["minimalist","neutral"]}]}'
+//
+// Usage example (production with SEED_SECRET):
+//   curl -X POST https://<host>/api/photos/import \
+//     -H "Authorization: Bearer $SEED_SECRET" \
+//     -H "Content-Type: application/json" \
+//     -d '{"photos":[{"url":"https://...","tags":["minimalist","neutral"]}]}'
+router.post("/photos/import", async (req, res) => {
+  const importSecret = process.env.SEED_SECRET;
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (isProduction && !importSecret) {
+    res.status(403).json({ error: "Import endpoint is disabled in production. Set SEED_SECRET to enable it." });
+    return;
+  }
+
+  if (importSecret) {
+    const auth = req.headers.authorization;
+    if (auth !== `Bearer ${importSecret}`) {
+      res.status(401).json({ error: "Invalid or missing Authorization header" });
+      return;
+    }
+  }
+  const { photos } = req.body as {
+    photos?: Array<{ url?: string; tags?: string[]; source?: string }>;
+  };
+
+  if (!Array.isArray(photos) || photos.length === 0) {
+    res.status(400).json({ error: "photos array is required and must be non-empty" });
+    return;
+  }
+
+  const valid = photos.filter(
+    (p) => typeof p.url === "string" && p.url.trim() && Array.isArray(p.tags) && p.tags.length >= 2
+  );
+
+  if (valid.length === 0) {
+    res.status(400).json({ error: "No valid photos: each must have a url and at least 2 tags" });
+    return;
+  }
+
+  const existingRows = await db.select({ url: stylePhotosTable.url }).from(stylePhotosTable);
+  const existingUrls = new Set(existingRows.map((r) => r.url));
+
+  const newPhotos = valid.filter((p) => !existingUrls.has(p.url!.trim()));
+
+  if (newPhotos.length === 0) {
+    res.json({ inserted: 0, skipped: valid.length, message: "All photos already exist" });
+    return;
+  }
+
+  const inserted = await db
+    .insert(stylePhotosTable)
+    .values(
+      newPhotos.map((p) => ({
+        url: p.url!.trim(),
+        tags: p.tags!,
+        source: p.source ?? "curated",
+      }))
+    )
+    .returning({ id: stylePhotosTable.id });
+
+  res.status(201).json({
+    inserted: inserted.length,
+    skipped: valid.length - inserted.length,
+    message: `Imported ${inserted.length} photos`,
+  });
+});
+
 router.get("/style-photos", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const limit = Math.min(Number(req.query.limit) || 20, 50);

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,8 +12,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useUser } from "@/context/UserContext";
 
-type Mode = "welcome" | "email" | "sent";
+type Mode = "welcome" | "email" | "code";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -22,18 +23,21 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 export default function Onboarding() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { login } = useUser();
+
   const [mode, setMode] = useState<Mode>("welcome");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const codeRef = useRef<TextInput>(null);
 
-  const handleSendMagicLink = async () => {
+  const handleSendCode = async () => {
     setError("");
     if (!email.trim() || !email.includes("@")) {
       setError("Please enter a valid email address");
       return;
     }
-
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/auth/magic-link`, {
@@ -41,14 +45,41 @@ export default function Onboarding() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to send link. Please try again.");
+        setError(data.error ?? "Failed to send code. Please try again.");
         return;
       }
+      setCode("");
+      setMode("code");
+      setTimeout(() => codeRef.current?.focus(), 300);
+    } catch {
+      setError("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setMode("sent");
+  const handleVerifyCode = async () => {
+    setError("");
+    const trimmed = code.trim();
+    if (trimmed.length !== 6) {
+      setError("Please enter the 6-digit code from your email");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/magic-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed, email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Invalid or expired code. Try requesting a new one.");
+        return;
+      }
+      login(data.userId, data.name, data.email, data.token);
     } catch {
       setError("Network error. Please check your connection.");
     } finally {
@@ -115,7 +146,7 @@ export default function Onboarding() {
               <View style={s.form}>
                 <Text style={s.formTitle}>Enter your email</Text>
                 <Text style={s.formSubtitle}>
-                  We'll send you a magic link — no password needed.
+                  We'll email you a 6-digit sign-in code — no password needed.
                 </Text>
                 <TextInput
                   style={[
@@ -127,10 +158,7 @@ export default function Onboarding() {
                     },
                   ]}
                   value={email}
-                  onChangeText={(t) => {
-                    setEmail(t);
-                    setError("");
-                  }}
+                  onChangeText={(t) => { setEmail(t); setError(""); }}
                   placeholder="you@example.com"
                   placeholderTextColor="#9E9E9E"
                   keyboardType="email-address"
@@ -138,54 +166,82 @@ export default function Onboarding() {
                   autoCorrect={false}
                   autoFocus
                   returnKeyType="send"
-                  onSubmitEditing={handleSendMagicLink}
+                  onSubmitEditing={handleSendCode}
                 />
                 {error ? (
                   <Text style={[s.errorText, { color: colors.destructive }]}>{error}</Text>
                 ) : null}
                 <Pressable
                   style={[s.createBtn, { opacity: loading ? 0.6 : 1 }]}
-                  onPress={handleSendMagicLink}
+                  onPress={handleSendCode}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color="#111111" />
                   ) : (
-                    <Text style={s.createBtnText}>Send Magic Link</Text>
+                    <Text style={s.createBtnText}>Send Code</Text>
                   )}
                 </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setMode("welcome");
-                    setError("");
-                  }}
-                >
+                <Pressable onPress={() => { setMode("welcome"); setError(""); }}>
                   <Text style={s.backText}>← Back</Text>
                 </Pressable>
               </View>
             </>
           )}
 
-          {mode === "sent" && (
+          {mode === "code" && (
             <>
               <View style={s.heroSection}>
                 <Logo />
               </View>
-              <View style={s.sentSection}>
+              <View style={s.form}>
                 <Text style={s.sentIcon}>📬</Text>
-                <Text style={s.sentTitle}>Check your email</Text>
-                <Text style={s.sentSubtitle}>
-                  We sent a magic link to{"\n"}
+                <Text style={s.formTitle}>Check your email</Text>
+                <Text style={s.formSubtitle}>
+                  We sent a 6-digit code to{"\n"}
                   <Text style={{ fontFamily: "Inter_600SemiBold" }}>{email}</Text>
-                  {"\n\n"}Tap the link in your email to sign in.
                 </Text>
-                <Pressable
-                  onPress={() => {
-                    setMode("email");
+                <TextInput
+                  ref={codeRef}
+                  style={[
+                    s.codeInput,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: error ? colors.destructive : "#D0D0D0",
+                      color: colors.foreground,
+                    },
+                  ]}
+                  value={code}
+                  onChangeText={(t) => {
+                    const digits = t.replace(/\D/g, "").slice(0, 6);
+                    setCode(digits);
                     setError("");
                   }}
+                  placeholder="000000"
+                  placeholderTextColor="#9E9E9E"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  returnKeyType="done"
+                  onSubmitEditing={handleVerifyCode}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                />
+                {error ? (
+                  <Text style={[s.errorText, { color: colors.destructive }]}>{error}</Text>
+                ) : null}
+                <Pressable
+                  style={[s.createBtn, { opacity: loading ? 0.6 : 1 }]}
+                  onPress={handleVerifyCode}
+                  disabled={loading}
                 >
-                  <Text style={s.backText}>Use a different email</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#111111" />
+                  ) : (
+                    <Text style={s.createBtnText}>Verify Code</Text>
+                  )}
+                </Pressable>
+                <Pressable onPress={() => { setMode("email"); setError(""); setCode(""); }}>
+                  <Text style={s.backText}>Resend code</Text>
                 </Pressable>
               </View>
             </>
@@ -207,151 +263,71 @@ function styles(colors: ReturnType<typeof useColors>) {
       paddingBottom: 20,
       gap: 16,
     },
-    logoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    frameIcon: {
-      width: 52,
-      height: 52,
-      position: "relative",
-    },
+    logoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    frameIcon: { width: 52, height: 52, position: "relative" },
     frameTopLeft: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: 26,
-      height: 26,
-      borderTopWidth: 3.5,
-      borderLeftWidth: 3.5,
-      borderColor: "#111111",
+      position: "absolute", top: 0, left: 0, width: 26, height: 26,
+      borderTopWidth: 3.5, borderLeftWidth: 3.5, borderColor: "#111111",
     },
     frameBottomRight: {
-      position: "absolute",
-      bottom: 0,
-      right: 0,
-      width: 26,
-      height: 26,
-      borderBottomWidth: 3.5,
-      borderRightWidth: 3.5,
-      borderColor: "#111111",
+      position: "absolute", bottom: 0, right: 0, width: 26, height: 26,
+      borderBottomWidth: 3.5, borderRightWidth: 3.5, borderColor: "#111111",
     },
     framePlus: {
-      position: "absolute",
-      top: 12,
-      left: 12,
-      right: 12,
-      bottom: 12,
-      alignItems: "center",
-      justifyContent: "center",
+      position: "absolute", top: 12, left: 12, right: 12, bottom: 12,
+      alignItems: "center", justifyContent: "center",
     },
     framePlusText: {
-      fontSize: 20,
-      color: "#111111",
-      fontFamily: "Inter_400Regular",
-      lineHeight: 20,
-      textAlign: "center",
-      includeFontPadding: false,
+      fontSize: 20, color: "#111111", fontFamily: "Inter_400Regular",
+      lineHeight: 20, textAlign: "center", includeFontPadding: false,
     },
     appName: {
-      fontSize: 38,
-      fontFamily: "Inter_700Bold",
-      color: "#111111",
-      letterSpacing: -1,
+      fontSize: 38, fontFamily: "Inter_700Bold", color: "#111111", letterSpacing: -1,
     },
     tagline: {
-      fontSize: 15,
-      fontFamily: "Inter_400Regular",
-      color: "#555555",
-      textAlign: "center",
-      letterSpacing: 0.1,
+      fontSize: 15, fontFamily: "Inter_400Regular", color: "#555555",
+      textAlign: "center", letterSpacing: 0.1,
     },
 
     spacer: { flex: 1, minHeight: 120 },
 
     actions: { gap: 12 },
     createBtn: {
-      height: 56,
-      borderRadius: 14,
-      backgroundColor: "#E0E0E0",
-      alignItems: "center",
-      justifyContent: "center",
+      height: 56, borderRadius: 14, backgroundColor: "#E0E0E0",
+      alignItems: "center", justifyContent: "center",
     },
-    createBtnText: {
-      fontSize: 17,
-      fontFamily: "Inter_500Medium",
-      color: "#111111",
-    },
+    createBtnText: { fontSize: 17, fontFamily: "Inter_500Medium", color: "#111111" },
     signInBtn: {
-      height: 56,
-      borderRadius: 14,
-      backgroundColor: "#FFFFFF",
-      borderWidth: 1.5,
-      borderColor: "#111111",
-      alignItems: "center",
-      justifyContent: "center",
+      height: 56, borderRadius: 14, backgroundColor: "#FFFFFF",
+      borderWidth: 1.5, borderColor: "#111111",
+      alignItems: "center", justifyContent: "center",
     },
-    signInBtnText: {
-      fontSize: 17,
-      fontFamily: "Inter_500Medium",
-      color: "#111111",
-    },
+    signInBtnText: { fontSize: 17, fontFamily: "Inter_500Medium", color: "#111111" },
 
-    form: { gap: 16 },
+    form: { gap: 16, alignItems: "stretch" },
+    sentIcon: { fontSize: 48, textAlign: "center" },
     formTitle: {
-      fontSize: 22,
-      fontFamily: "Inter_700Bold",
-      color: "#111111",
-      textAlign: "center",
+      fontSize: 22, fontFamily: "Inter_700Bold", color: "#111111", textAlign: "center",
     },
     formSubtitle: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      color: "#666666",
-      textAlign: "center",
-      lineHeight: 20,
+      fontSize: 14, fontFamily: "Inter_400Regular", color: "#666666",
+      textAlign: "center", lineHeight: 22,
     },
     input: {
-      height: 54,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      paddingHorizontal: 16,
-      fontSize: 16,
-      fontFamily: "Inter_400Regular",
+      height: 54, borderRadius: 14, borderWidth: 1.5,
+      paddingHorizontal: 16, fontSize: 16, fontFamily: "Inter_400Regular",
+    },
+    codeInput: {
+      height: 72, borderRadius: 14, borderWidth: 1.5,
+      paddingHorizontal: 16, fontSize: 36, fontFamily: "Inter_700Bold",
+      textAlign: "center", letterSpacing: 10,
     },
     errorText: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
+      fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center",
     },
     backText: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      color: "#888888",
-      textAlign: "center",
-      marginTop: 4,
-    },
-
-    sentSection: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 16,
-      paddingBottom: 80,
-    },
-    sentIcon: { fontSize: 52 },
-    sentTitle: {
-      fontSize: 24,
-      fontFamily: "Inter_700Bold",
-      color: "#111111",
-    },
-    sentSubtitle: {
-      fontSize: 15,
-      fontFamily: "Inter_400Regular",
-      color: "#666666",
-      textAlign: "center",
-      lineHeight: 24,
+      fontSize: 14, fontFamily: "Inter_400Regular",
+      color: "#888888", textAlign: "center", marginTop: 4,
     },
   });
 }

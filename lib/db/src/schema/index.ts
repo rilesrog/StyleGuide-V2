@@ -100,6 +100,7 @@ export const magicLinkTokensTable = pgTable("magic_link_tokens", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
   token: text("token").notNull().unique(),
+  code: text("code"),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

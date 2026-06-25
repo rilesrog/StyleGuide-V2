@@ -65,7 +65,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "",
           tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (
@@ -78,7 +78,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Discover",
+          title: "",
           tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (
@@ -91,7 +91,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="boards"
         options={{
-          title: "Boards",
+          title: "",
           tabBarLabel: () => null,
           tabBarIcon: ({ color }) =>
             isIOS ? (

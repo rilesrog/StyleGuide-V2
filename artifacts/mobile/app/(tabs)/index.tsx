@@ -102,7 +102,7 @@ export default function DiscoverScreen() {
       try {
         const useSessionId = isRegistry && isActive && session?.id;
         if (useSessionId) {
-          await fetch(`${API_BASE}/api/swipes`, {
+          const resp = await fetch(`${API_BASE}/api/swipes`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -110,6 +110,7 @@ export default function DiscoverScreen() {
             },
             body: JSON.stringify({ photoId: currentPhoto.id, liked, sessionId: session!.id }),
           });
+          if (!resp.ok) throw new Error(`Swipe failed: ${resp.status}`);
         } else {
           await recordSwipe.mutateAsync({ data: { photoId: currentPhoto.id, liked } });
         }

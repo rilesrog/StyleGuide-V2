@@ -182,7 +182,7 @@ export default function BoardsScreen() {
         </View>
 
         {/* ── Style inspiration photos ── */}
-        {styleBoardLoading && !hasPhotos ? null : hasPhotos ? (
+        {styleBoardLoading && !hasPhotos && !hasSessionPhotos ? null : (hasPhotos || hasSessionPhotos) ? (
           <>
             {isRegistryWithPartner ? (
               <>

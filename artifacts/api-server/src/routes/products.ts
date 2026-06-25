@@ -5,9 +5,11 @@ import {
   productSwipesTable,
   styleProfilesTable,
   sessionsTable,
+  boardItemsTable,
 } from "@workspace/db/schema";
 import { eq, and, notInArray, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { ensureDefaultBoard } from "./boards";
 
 const router = Router();
 
@@ -177,6 +179,28 @@ router.post("/product-swipes", requireAuth, async (req, res) => {
       ...(sessionId ? { sessionId: Number(sessionId) } : {}),
     })
     .returning();
+
+  // When a solo (no session) like is recorded, add the product to the user's default board
+  if (liked && !sessionId) {
+    try {
+      const boardId = await ensureDefaultBoard(userId);
+      const existing = await db
+        .select({ id: boardItemsTable.id })
+        .from(boardItemsTable)
+        .where(
+          and(
+            eq(boardItemsTable.boardId, boardId),
+            eq(boardItemsTable.productId, Number(productId))
+          )
+        )
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(boardItemsTable).values({ boardId, productId: Number(productId) });
+      }
+    } catch {
+      // Board write failure is non-fatal — swipe was already recorded
+    }
+  }
 
   res.status(201).json({ success: true, swipeId: swipe.id });
 });

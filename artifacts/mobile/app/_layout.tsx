@@ -94,6 +94,7 @@ function RootLayoutNav() {
       <Stack.Screen name="quiz/results" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="invite" options={{ title: "Invite Partner", presentation: "modal" }} />
       <Stack.Screen name="join/[token]" options={{ headerShown: false }} />
+      <Stack.Screen name="board/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

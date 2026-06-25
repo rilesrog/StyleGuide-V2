@@ -122,3 +122,26 @@ export const roomAssignmentsTable = pgTable("room_assignments", {
 export const insertRoomAssignmentSchema = createInsertSchema(roomAssignmentsTable).omit({ id: true, createdAt: true });
 export type InsertRoomAssignment = z.infer<typeof insertRoomAssignmentSchema>;
 export type RoomAssignment = typeof roomAssignmentsTable.$inferSelect;
+
+export const boardsTable = pgTable("boards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  name: text("name").notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBoardSchema = createInsertSchema(boardsTable).omit({ id: true, createdAt: true });
+export type InsertBoard = z.infer<typeof insertBoardSchema>;
+export type Board = typeof boardsTable.$inferSelect;
+
+export const boardItemsTable = pgTable("board_items", {
+  id: serial("id").primaryKey(),
+  boardId: integer("board_id").notNull().references(() => boardsTable.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => productsTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBoardItemSchema = createInsertSchema(boardItemsTable).omit({ id: true, createdAt: true });
+export type InsertBoardItem = z.infer<typeof insertBoardItemSchema>;
+export type BoardItem = typeof boardItemsTable.$inferSelect;

@@ -12,12 +12,12 @@ const MATERIALS = ["Marble", "Rattan", "Velvet", "Oak", "Linen", "Brass"];
 const TAGS = ["Wabi-sabi", "Layered", "Free-spirited", "Grounded", "Global", "Expressive", "Organic", "Curated", "Serene", "Mindful"];
 
 const MATERIAL_IMAGES: Record<string, string> = {
-  Marble: "https://images.pexels.com/photos/12956025/pexels-photo-12956025.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  Rattan: "https://www.sketchuptextureclub.com/public/texture_m/0070-synthetic-wicker-texture-seamless.jpg",
-  Velvet: "https://static.vecteezy.com/system/resources/thumbnails/035/328/570/small/pink-velvet-fabric-texture-used-as-background-empty-pink-fabric-background-luxury-of-soft-and-smooth-textile-material-there-is-space-for-text-photo.jpg",
+  Marble: "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  Rattan: "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
+  Velvet: "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   Oak:    "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   Linen:  "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  Brass:  "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  Brass:  "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
 };
 
 function hexToRgb(hex: string) {
@@ -92,9 +92,12 @@ export default function Preview() {
         </div>
       </div>
 
+      {/* Spacer */}
+      <div style={{ flex:1, minHeight:24 }} />
+
       {/* CTA */}
-      <button style={{ width:"100%", padding:"15px 0", borderRadius:16, background:"#111", color:"#fff", fontSize:16, fontWeight:600, border:"none", cursor:"pointer", marginTop:4 }}>
-        Explore StyleSwipe →
+      <button style={{ width:"100%", padding:"16px 0", borderRadius:16, background:"#111", color:"#fff", fontSize:16, fontWeight:600, border:"none", cursor:"pointer", marginTop:4, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+        See your custom picks →
       </button>
     </div>
   );

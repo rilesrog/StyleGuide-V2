@@ -1,1 +1,2 @@
 - [StyleSwipe stack decisions](styleswipe-stack.md) — token auth (email-only, no password), PanResponder swipe cards, Unsplash curated URLs for style photos
+- [Quiz results material images](quiz-results-design.md) — Pexels/Pinterest/SketchUpTexture URLs work in browser & native; Vecteezy thumbnails hotlink-block in browser but load fine in native app.

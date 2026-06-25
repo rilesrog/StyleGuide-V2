@@ -28,40 +28,40 @@ interface StyleResult {
 }
 
 const MATERIAL_IMAGES: Record<string, string> = {
-  "Marble":            "https://images.pexels.com/photos/12956025/pexels-photo-12956025.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Marble":            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Velvet":            "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Brass":             "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Mixed Metals":      "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Leather":           "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Polished Concrete": "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Rattan":            "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
+  "Sisal":             "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
+  "Woven Textiles":    "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
+  "Macramé":           "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
   "Linen":             "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Cotton":            "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Natural Stone":     "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Stone":             "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Velvet":            "https://static.vecteezy.com/system/resources/thumbnails/035/328/570/small/pink-velvet-fabric-texture-used-as-background-empty-pink-fabric-background-luxury-of-soft-and-smooth-textile-material-there-is-space-for-text-photo.jpg",
   "Wool":              "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
-  "Rattan":            "https://www.sketchuptextureclub.com/public/texture_m/0070-synthetic-wicker-texture-seamless.jpg",
-  "Sisal":             "https://www.sketchuptextureclub.com/public/texture_m/0070-synthetic-wicker-texture-seamless.jpg",
-  "Woven Textiles":    "https://www.sketchuptextureclub.com/public/texture_m/0070-synthetic-wicker-texture-seamless.jpg",
-  "Macramé":           "https://www.sketchuptextureclub.com/public/texture_m/0070-synthetic-wicker-texture-seamless.jpg",
+  "Sherpa":            "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
+  "Bouclé":            "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
+  "Rich Fabrics":      "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Oak":               "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   "Teak":              "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   "Natural Wood":      "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   "Lacquered Wood":    "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   "Birch":             "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
+  "Unfinished Wood":   "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
   "Reclaimed Wood":    "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  "Unfinished Wood":   "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
   "Shiplap":           "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  "Leather":           "https://everytexture.com/wp-content/uploads/2019/02/everytexture.com-stock-fabric-leather-texture-00007-1024x768.jpg",
-  "Ceramic":           "https://i.pinimg.com/originals/fc/60/25/fc6025d44440020fbb98818c4765e2ee.jpg",
-  "Bouclé":            "https://luxurysofabric.com/cdn/shop/files/il_fullxfull.4843469074_rmhv_512x384.jpg?v=1729369553",
-  "Sherpa":            "https://luxurysofabric.com/cdn/shop/files/il_fullxfull.4843469074_rmhv_512x384.jpg?v=1729369553",
-  "Cotton":            "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Bamboo":            "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Exposed Brick":     "https://img.magnific.com/premium-photo/peeling-plaster-exposed-brick-wall-texture_544662-10011.jpg?w=400&q=80",
-  "Polished Concrete": "https://png.pngtree.com/thumb_back/fh260/background/20231227/pngtree-background-of-wallpaper-with-gray-concrete-texture-image_13829277.png",
-  "Glass":             "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Brass":             "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Raw Steel":         "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Steel":             "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Mixed Metals":      "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Crystal":           "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Corian":            "https://images.pexels.com/photos/12956025/pexels-photo-12956025.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Rich Fabrics":      "https://static.vecteezy.com/system/resources/thumbnails/035/328/570/small/pink-velvet-fabric-texture-used-as-background-empty-pink-fabric-background-luxury-of-soft-and-smooth-textile-material-there-is-space-for-text-photo.jpg",
+  "Raw Steel":         "https://static.vecteezy.com/system/resources/thumbnails/059/357/123/small/a-grey-concrete-wall-with-a-weathered-texture-creates-a-raw-industrial-and-versatile-background-photo.jpg",
+  "Steel":             "https://static.vecteezy.com/system/resources/thumbnails/059/357/123/small/a-grey-concrete-wall-with-a-weathered-texture-creates-a-raw-industrial-and-versatile-background-photo.jpg",
+  "Crystal":           "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Corian":            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Glass":             "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Ceramic":           "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  "Bamboo":            "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Terracotta Tile":   "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
   "Molded Plastic":    "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
 };
@@ -109,7 +109,7 @@ function MaterialTile({ name, tileW, tileH }: { name: string; tileW: number; til
           onError={() => setImgError(true)}
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#4a4a4a" }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#3a3a3a" }]} />
       )}
       <View style={s.materialOverlay}>
         <Text style={s.materialName} numberOfLines={2}>
@@ -123,7 +123,7 @@ function MaterialTile({ name, tileW, tileH }: { name: string; tileW: number; til
 export default function QuizResultsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const { result } = useLocalSearchParams<{ result: string }>();
   const { completeQuiz } = useUser();
 
@@ -133,9 +133,12 @@ export default function QuizResultsScreen() {
   } catch {}
 
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
+  const bottomInset = insets.bottom;
   const contentW = screenW - 40;
   const tileW = Math.floor((contentW - 16) / 3);
-  const tileH = Math.round(tileW * 0.9);
+  const tileH = Math.round(tileW * 0.92);
+
+  const minContentH = screenH - topInset - bottomInset - 24;
 
   const palette = (styleResult?.colorPalette ?? []).slice(0, 4);
   const materials = (styleResult?.materials ?? []).slice(0, 6);
@@ -144,10 +147,12 @@ export default function QuizResultsScreen() {
   return (
     <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        s.content,
-        { paddingTop: topInset + 12, paddingBottom: insets.bottom + 24 },
-      ]}
+      contentContainerStyle={{
+        paddingTop: topInset + 16,
+        paddingBottom: bottomInset + 32,
+        paddingHorizontal: 20,
+        minHeight: minContentH,
+      }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
@@ -215,13 +220,16 @@ export default function QuizResultsScreen() {
         </View>
       )}
 
+      {/* Spacer pushes button to bottom */}
+      <View style={s.spacer} />
+
       {/* CTA */}
       <Pressable
         style={[s.enterBtn, { backgroundColor: colors.primary }]}
         onPress={completeQuiz}
       >
         <Text style={[s.enterBtnText, { color: colors.primaryForeground }]}>
-          Explore StyleSwipe
+          See your custom picks
         </Text>
         <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
       </Pressable>
@@ -231,19 +239,18 @@ export default function QuizResultsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 16 },
 
-  header: { alignItems: "center", gap: 8, paddingBottom: 4 },
+  header: { alignItems: "center", gap: 10, paddingBottom: 8, marginBottom: 6 },
   badgeCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
   },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center" },
 
-  section: { gap: 10 },
+  section: { gap: 12, marginBottom: 28 },
   label: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
@@ -254,19 +261,20 @@ const s = StyleSheet.create({
   paletteRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingHorizontal: 4,
   },
-  swatchItem: { alignItems: "center", gap: 7, flex: 1 },
+  swatchItem: { alignItems: "center", gap: 8, flex: 1 },
   swatchCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
   },
   swatchName: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
     lineHeight: 14,
-    maxWidth: 70,
+    maxWidth: 72,
   },
 
   materialGrid: {
@@ -275,7 +283,7 @@ const s = StyleSheet.create({
     gap: 8,
   },
   materialTile: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: "hidden",
     position: "relative",
   },
@@ -284,9 +292,9 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: "rgba(0,0,0,0.52)",
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    backgroundColor: "rgba(0,0,0,0.50)",
   },
   materialName: {
     fontSize: 11,
@@ -295,21 +303,23 @@ const s = StyleSheet.create({
     lineHeight: 14,
   },
 
-  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
   },
   tagText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+
+  spacer: { flex: 1, minHeight: 24 },
 
   enterBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 15,
+    paddingVertical: 16,
     borderRadius: 16,
     marginTop: 4,
   },

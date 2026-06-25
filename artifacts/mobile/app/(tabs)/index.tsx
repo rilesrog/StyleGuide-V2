@@ -120,16 +120,6 @@ export default function DiscoverScreen() {
     [photos, offset, totalAvailable, recordSwipe, queryClient]
   );
 
-  const handleRetake = () => {
-    setPhotos([]);
-    setOffset(0);
-    setTotalAvailable(null);
-    setIsDone(false);
-    setSwipeCount(0);
-    isLoadingMore.current = false;
-    refetch();
-  };
-
   const s = stylesheet(colors);
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
@@ -149,16 +139,10 @@ export default function DiscoverScreen() {
         <View style={[s.doneIcon, { backgroundColor: colors.primary + "20" }]}>
           <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
         </View>
-        <Text style={[s.doneTitle, { color: colors.foreground }]}>Style Quiz Complete</Text>
+        <Text style={[s.doneTitle, { color: colors.foreground }]}>All caught up!</Text>
         <Text style={[s.doneSubtitle, { color: colors.mutedForeground }]}>
-          You swiped {swipeCount} photos.{"\n"}Check your Board to see your style!
+          You've seen all available photos.{"\n"}Check back soon for fresh inspiration.
         </Text>
-        <Pressable
-          style={[s.retakeBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={handleRetake}
-        >
-          <Text style={[s.retakeBtnText, { color: colors.foreground }]}>Retake Quiz</Text>
-        </Pressable>
       </View>
     );
   }
@@ -264,13 +248,5 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       textAlign: "center",
       lineHeight: 24,
     },
-    retakeBtn: {
-      paddingHorizontal: 28,
-      paddingVertical: 14,
-      borderRadius: 14,
-      borderWidth: 1,
-      marginTop: 8,
-    },
-    retakeBtnText: { fontSize: 16, fontFamily: "Inter_500Medium" },
   });
 }

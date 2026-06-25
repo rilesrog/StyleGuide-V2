@@ -1,7 +1,6 @@
 import {
   useGetStyleBoard,
   useGetStyleProfile,
-  useResetSwipes,
   useGetProductBoard,
   useGetRooms,
   useAssignProductToRoom,
@@ -10,7 +9,6 @@ import {
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -99,7 +97,6 @@ export default function BoardScreen() {
 
   const assignToRoom = useAssignProductToRoom();
   const removeFromRoom = useRemoveProductFromRoom();
-  const resetSwipesMutation = useResetSwipes();
 
   const photos = (boardData?.photos ?? []) as Array<{ id: number; url: string; tags: string[] }>;
   const products = (productBoardData?.products ?? []) as Product[];
@@ -147,30 +144,6 @@ export default function BoardScreen() {
     }
     queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleRetakeQuiz = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const doReset = async () => {
-      await resetSwipesMutation.mutateAsync({});
-      queryClient.invalidateQueries();
-      router.navigate("/");
-    };
-
-    if (Platform.OS === "web") {
-      if (window.confirm("Reset all swipes and retake the quiz?")) {
-        doReset();
-      }
-    } else {
-      Alert.alert(
-        "Retake Quiz",
-        "This will clear your style board and start fresh. Continue?",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Reset & Retake", style: "destructive", onPress: doReset },
-        ]
-      );
-    }
   };
 
   const s = stylesheet(colors);
@@ -221,16 +194,6 @@ export default function BoardScreen() {
               </Text>
             </View>
           ))}
-          <Pressable
-            style={[s.retakeBtn, { borderColor: colors.border }]}
-            onPress={handleRetakeQuiz}
-            disabled={resetSwipesMutation.isPending}
-          >
-            <Ionicons name="refresh-outline" size={16} color={colors.mutedForeground} />
-            <Text style={[s.retakeBtnText, { color: colors.mutedForeground }]}>
-              {resetSwipesMutation.isPending ? "Resetting..." : "Retake Quiz"}
-            </Text>
-          </Pressable>
         </View>
       )}
 
@@ -626,17 +589,6 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
     tagBarTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
     tagBarFill: { height: "100%", borderRadius: 3 },
     tagBarPct: { fontSize: 12, fontFamily: "Inter_400Regular", width: 34, textAlign: "right" },
-    retakeBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      marginTop: 4,
-    },
-    retakeBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
     segmentRow: {
       flexDirection: "row",
       marginHorizontal: 16,

@@ -90,6 +90,8 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="quiz/index" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="quiz/results" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="invite" options={{ title: "Invite Partner", presentation: "modal" }} />
       <Stack.Screen name="join/[token]" options={{ headerShown: false }} />
     </Stack>

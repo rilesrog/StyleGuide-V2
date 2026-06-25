@@ -51,6 +51,7 @@ export default function ProfileScreen() {
   const tagWeights = (profileData?.tagWeights ?? []) as Array<{ tag: string; score: number; count: number }>;
   const totalSwipes = profileData?.totalSwipes ?? 0;
   const likedCount = profileData?.likedCount ?? 0;
+  const styleResult = profileData?.styleResult ?? null;
 
   const initials = name
     ? name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -96,6 +97,41 @@ export default function ProfileScreen() {
           <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Match</Text>
         </View>
       </View>
+
+      {/* My Style */}
+      {styleResult && (
+        <View style={[s.section, { backgroundColor: colors.card }]}>
+          <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>My Style</Text>
+
+          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Color Palette</Text>
+          <View style={s.paletteRow}>
+            {styleResult.colorPalette.map((c, i) => (
+              <View key={i} style={s.paletteItem}>
+                <View style={[s.swatch, { backgroundColor: c.hex, borderColor: colors.border }]} />
+                <Text style={[s.swatchName, { color: colors.foreground }]} numberOfLines={2}>{c.name}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Materials</Text>
+          <View style={s.chipsWrap}>
+            {styleResult.materials.map((m, i) => (
+              <View key={i} style={[s.chip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Text style={[s.chipText, { color: colors.foreground }]}>{m}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[s.myStyleSubLabel, { color: colors.foreground }]}>Aesthetic</Text>
+          <View style={s.chipsWrap}>
+            {styleResult.styleTags.map((t, i) => (
+              <View key={i} style={[s.chip, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                <Text style={[s.chipText, { color: colors.primary }]}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Mode selector */}
       <View style={[s.section, { backgroundColor: colors.card }]}>
@@ -442,5 +478,37 @@ function stylesheet(colors: ReturnType<typeof useColors>) {
       fontFamily: "Inter_400Regular",
       lineHeight: 19,
     },
+    myStyleSubLabel: {
+      fontSize: 12,
+      fontFamily: "Inter_600SemiBold",
+      marginTop: 4,
+    },
+    paletteRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    paletteItem: { alignItems: "center", gap: 4, minWidth: 52, maxWidth: 68 },
+    swatch: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    swatchName: {
+      fontSize: 10,
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      lineHeight: 13,
+    },
+    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 18,
+      borderWidth: 1,
+    },
+    chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   });
 }

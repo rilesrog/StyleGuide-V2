@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   passwordSalt: text("password_salt"),
   supabaseId: text("supabase_id").unique(),
   mode: text("mode").default("decoration"),
+  quizCompletedAt: timestamp("quiz_completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -45,6 +46,7 @@ export const styleProfilesTable = pgTable("style_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().unique().references(() => usersTable.id),
   tagWeights: jsonb("tag_weights").notNull().default({}),
+  styleResult: jsonb("style_result"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

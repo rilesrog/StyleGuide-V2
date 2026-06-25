@@ -63,11 +63,24 @@ export interface StyleTagWeight {
   count: number;
 }
 
+export interface StyleColorEntry {
+  name: string;
+  hex: string;
+}
+
+export interface StyleResultData {
+  colorPalette: StyleColorEntry[];
+  materials: string[];
+  styleTags: string[];
+}
+
 export interface StyleProfileResponse {
   topTags: string[];
   tagWeights: StyleTagWeight[];
   totalSwipes: number;
   likedCount: number;
+  quizCompleted: boolean;
+  styleResult: StyleResultData | null;
 }
 
 export interface StyleBoardResponse {

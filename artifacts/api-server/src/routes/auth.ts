@@ -226,10 +226,11 @@ router.post("/auth/magic-verify", async (req, res) => {
 router.get("/users/me", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const rows = await db
-    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, mode: usersTable.mode })
+    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, mode: usersTable.mode, quizCompletedAt: usersTable.quizCompletedAt })
     .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!rows.length) { res.status(404).json({ error: "User not found" }); return; }
-  res.json(rows[0]);
+  const u = rows[0];
+  res.json({ ...u, quizCompleted: !!u.quizCompletedAt });
 });
 
 // PATCH /users/me/mode

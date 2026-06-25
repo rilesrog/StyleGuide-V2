@@ -1,10 +1,139 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { stylePhotosTable, swipesTable, styleProfilesTable } from "@workspace/db/schema";
+import { stylePhotosTable, swipesTable, styleProfilesTable, usersTable } from "@workspace/db/schema";
 import { eq, and, notInArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
+
+// ─── Tag taxonomy ────────────────────────────────────────────────────────────
+
+type ColorEntry = { name: string; hex: string };
+
+const COLOR_MAP: Record<string, ColorEntry[]> = {
+  minimalist:    [{ name: "Crisp White", hex: "#F7F5F3" }, { name: "Soft Greige", hex: "#CAC1B5" }],
+  scandinavian:  [{ name: "Warm White", hex: "#F5F1EC" }, { name: "Light Ash", hex: "#D4CFC9" }],
+  japandi:       [{ name: "Stone", hex: "#B5AFA9" }, { name: "Warm Sand", hex: "#D9C5A0" }],
+  industrial:    [{ name: "Charcoal", hex: "#3D3D3D" }, { name: "Slate", hex: "#6B7280" }],
+  bohemian:      [{ name: "Terracotta", hex: "#C4784A" }, { name: "Amber", hex: "#D4956A" }],
+  farmhouse:     [{ name: "Antique White", hex: "#F2EDE4" }, { name: "Sage", hex: "#9BAF8E" }],
+  rustic:        [{ name: "Warm Sand", hex: "#D4B896" }, { name: "Bark Brown", hex: "#7C5C3D" }],
+  coastal:       [{ name: "Sea Mist", hex: "#B8D4E3" }, { name: "Sandy Beige", hex: "#DDD0B8" }],
+  "mid-century": [{ name: "Mustard", hex: "#C9A227" }, { name: "Walnut", hex: "#7C5C3D" }],
+  maximalist:    [{ name: "Deep Teal", hex: "#2D5A6B" }, { name: "Rich Gold", hex: "#C49A2A" }],
+  eclectic:      [{ name: "Plum", hex: "#7B5B8A" }, { name: "Copper", hex: "#B87333" }],
+  "art-deco":    [{ name: "Champagne", hex: "#D4AF6A" }, { name: "Deep Emerald", hex: "#1B4D3E" }],
+  contemporary:  [{ name: "Cool White", hex: "#F0F0F0" }, { name: "Mid Gray", hex: "#9E9E9E" }],
+  warm:          [{ name: "Warm Ivory", hex: "#F5EDD6" }, { name: "Terracotta", hex: "#C4784A" }],
+  neutral:       [{ name: "Greige", hex: "#CAC1B5" }, { name: "Off White", hex: "#F2EDE6" }],
+  dark:          [{ name: "Charcoal", hex: "#2C2C2C" }, { name: "Slate Blue", hex: "#3D4F6B" }],
+  cozy:          [{ name: "Warm Beige", hex: "#D9C5A0" }, { name: "Rust", hex: "#B5541B" }],
+  colorful:      [{ name: "Peacock", hex: "#2C7873" }, { name: "Coral", hex: "#E8785A" }],
+  natural:       [{ name: "Clay", hex: "#A87050" }, { name: "Moss", hex: "#6B7C4D" }],
+  retro:         [{ name: "Mustard", hex: "#C9A227" }, { name: "Avocado", hex: "#7D9B4B" }],
+  glamorous:     [{ name: "Champagne", hex: "#D4AF6A" }, { name: "Blush", hex: "#E8C4C0" }],
+};
+
+const MATERIALS_MAP: Record<string, string[]> = {
+  minimalist:    ["Polished Concrete", "Glass"],
+  scandinavian:  ["Oak", "Wool", "Birch"],
+  japandi:       ["Bamboo", "Natural Stone", "Linen"],
+  industrial:    ["Raw Steel", "Exposed Brick", "Reclaimed Wood"],
+  bohemian:      ["Rattan", "Macramé", "Woven Textiles"],
+  farmhouse:     ["Shiplap", "Reclaimed Wood", "Cotton"],
+  rustic:        ["Reclaimed Wood", "Stone", "Leather"],
+  coastal:       ["Rattan", "Linen", "Sisal"],
+  "mid-century": ["Teak", "Leather", "Molded Plastic"],
+  maximalist:    ["Velvet", "Mixed Metals", "Rich Fabrics"],
+  eclectic:      ["Mixed Metals", "Velvet", "Rattan"],
+  "art-deco":    ["Marble", "Brass", "Velvet"],
+  contemporary:  ["Lacquered Wood", "Steel", "Corian"],
+  wood:          ["Reclaimed Wood", "Natural Wood"],
+  textured:      ["Bouclé", "Woven Textiles", "Sisal"],
+  natural:       ["Natural Stone", "Unfinished Wood", "Linen"],
+  warm:          ["Wool", "Leather", "Terracotta Tile"],
+  cozy:          ["Bouclé", "Sherpa", "Natural Wood"],
+  glamorous:     ["Marble", "Brass", "Crystal"],
+  retro:         ["Teak", "Leather", "Molded Plastic"],
+};
+
+const STYLE_TAGS_MAP: Record<string, string[]> = {
+  minimalist:    ["Clean Lines", "Uncluttered", "Intentional", "Calm"],
+  scandinavian:  ["Hygge", "Functional", "Cozy", "Understated"],
+  japandi:       ["Wabi-sabi", "Serene", "Mindful", "Grounded"],
+  industrial:    ["Raw", "Edgy", "Urban", "Unconventional"],
+  bohemian:      ["Free-spirited", "Layered", "Global", "Expressive"],
+  farmhouse:     ["Welcoming", "Timeless", "Comfortable", "Down-to-earth"],
+  rustic:        ["Natural", "Warm", "Grounded", "Authentic"],
+  coastal:       ["Breezy", "Relaxed", "Light-filled", "Effortless"],
+  "mid-century": ["Retro-chic", "Organic Forms", "Nostalgic", "Iconic"],
+  maximalist:    ["Expressive", "Collected", "Layered", "Bold"],
+  eclectic:      ["Curated", "Personal", "Story-driven", "Unique"],
+  "art-deco":    ["Glamorous", "Geometric", "Luxurious", "Dramatic"],
+  contemporary:  ["Fresh", "Current", "Sophisticated", "Effortless"],
+  warm:          ["Inviting", "Snug", "Warmth", "Comfort"],
+  cozy:          ["Hygge", "Snug", "Inviting"],
+  bold:          ["Statement-making", "Confident", "Dramatic"],
+  airy:          ["Light-filled", "Spacious", "Open"],
+  zen:           ["Peaceful", "Balanced", "Meditative"],
+  serene:        ["Calm", "Tranquil", "Peaceful"],
+  natural:       ["Organic", "Earthy", "Sustainable"],
+  colorful:      ["Vibrant", "Playful", "Joyful"],
+  glamorous:     ["Luxurious", "Opulent", "Sophisticated"],
+  retro:         ["Nostalgic", "Vintage", "Playful"],
+  vintage:       ["Nostalgic", "Timeless", "Collected"],
+  artistic:      ["Creative", "Expressive", "Original"],
+  plants:        ["Biophilic", "Fresh", "Living Spaces"],
+};
+
+interface StyleResult {
+  colorPalette: ColorEntry[];
+  materials: string[];
+  styleTags: string[];
+}
+
+function deriveStyleResult(tagCounts: Record<string, number>, likedCount: number): StyleResult {
+  const sorted = Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag);
+
+  const seenColors = new Set<string>();
+  const colorPalette: ColorEntry[] = [];
+  const seenMaterials = new Set<string>();
+  const materials: string[] = [];
+  const seenStyleTags = new Set<string>();
+  const styleTags: string[] = [];
+
+  for (const tag of sorted) {
+    for (const c of COLOR_MAP[tag] ?? []) {
+      if (!seenColors.has(c.hex) && colorPalette.length < 5) {
+        seenColors.add(c.hex);
+        colorPalette.push(c);
+      }
+    }
+    for (const m of MATERIALS_MAP[tag] ?? []) {
+      if (!seenMaterials.has(m) && materials.length < 6) {
+        seenMaterials.add(m);
+        materials.push(m);
+      }
+    }
+    for (const s of STYLE_TAGS_MAP[tag] ?? []) {
+      if (!seenStyleTags.has(s) && styleTags.length < 10) {
+        seenStyleTags.add(s);
+        styleTags.push(s);
+      }
+    }
+  }
+
+  // Fallback if we don't have enough
+  if (colorPalette.length === 0) colorPalette.push({ name: "Warm White", hex: "#F5F1EC" }, { name: "Greige", hex: "#CAC1B5" });
+  if (materials.length === 0) materials.push("Natural Wood", "Linen");
+  if (styleTags.length === 0) styleTags.push("Timeless", "Comfortable");
+
+  return { colorPalette, materials, styleTags };
+}
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
 
 router.get("/style-photos", requireAuth, async (req, res) => {
   const userId = req.userId!;
@@ -50,7 +179,6 @@ router.post("/swipes", requireAuth, async (req, res) => {
     .values({ userId, photoId: Number(photoId), liked: Boolean(liked) })
     .returning();
 
-  // Persist updated style profile
   await persistStyleProfile(userId);
 
   res.status(201).json({ success: true, swipeId: swipe.id });
@@ -77,8 +205,22 @@ router.get("/style-profile", requireAuth, async (req, res) => {
     .from(swipesTable)
     .where(eq(swipesTable.userId, userId));
 
+  const userRows = await db
+    .select({ quizCompletedAt: usersTable.quizCompletedAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  const profileRows = await db
+    .select({ styleResult: styleProfilesTable.styleResult })
+    .from(styleProfilesTable)
+    .where(eq(styleProfilesTable.userId, userId))
+    .limit(1);
+
   const totalSwipes = totalSwipesResult[0]?.count ?? 0;
   const likedCount = likedPhotos.length;
+  const quizCompleted = !!userRows[0]?.quizCompletedAt;
+  const styleResult = profileRows[0]?.styleResult ?? null;
 
   const tagCounts: Record<string, number> = {};
   for (const { tags } of likedPhotos) {
@@ -97,7 +239,42 @@ router.get("/style-profile", requireAuth, async (req, res) => {
 
   const topTags = tagWeights.slice(0, 5).map((t) => t.tag);
 
-  res.json({ topTags, tagWeights, totalSwipes, likedCount });
+  res.json({ topTags, tagWeights, totalSwipes, likedCount, quizCompleted, styleResult });
+});
+
+router.post("/style-profile/complete", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+
+  const likedPhotos = await db
+    .select({ tags: stylePhotosTable.tags })
+    .from(swipesTable)
+    .innerJoin(stylePhotosTable, eq(swipesTable.photoId, stylePhotosTable.id))
+    .where(and(eq(swipesTable.userId, userId), eq(swipesTable.liked, true)));
+
+  const likedCount = likedPhotos.length;
+  const tagCounts: Record<string, number> = {};
+  for (const { tags } of likedPhotos) {
+    for (const tag of tags ?? []) {
+      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+    }
+  }
+
+  const styleResult = deriveStyleResult(tagCounts, likedCount);
+
+  await db
+    .insert(styleProfilesTable)
+    .values({ userId, tagWeights: tagCounts, styleResult })
+    .onConflictDoUpdate({
+      target: styleProfilesTable.userId,
+      set: { styleResult, updatedAt: new Date() },
+    });
+
+  await db
+    .update(usersTable)
+    .set({ quizCompletedAt: new Date() })
+    .where(eq(usersTable.id, userId));
+
+  res.json({ success: true, styleResult });
 });
 
 router.get("/style-board", requireAuth, async (req, res) => {

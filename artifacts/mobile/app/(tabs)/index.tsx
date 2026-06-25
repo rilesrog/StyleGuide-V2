@@ -135,7 +135,7 @@ export default function DiscoverScreen() {
         </View>
       ) : (
         <>
-          <View style={s.deckArea}>
+          <View style={[s.deckArea, { paddingTop: topInset + 16 }]}>
             {photos.length >= 2 && (
               <SwipeCard
                 key={photos[1].id + "_behind"}

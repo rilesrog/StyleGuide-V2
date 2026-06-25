@@ -119,7 +119,7 @@ export default function DiscoverScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       <View style={[s.header, { paddingTop: topInset + 8 }]}>
-        <Text style={[s.headerTitle, { color: colors.foreground }]}>Discover</Text>
+        <Text style={[s.headerTitle, { color: colors.foreground }]}>Discover your aesthetic</Text>
       </View>
 
       {photosLoading && photos.length === 0 ? (

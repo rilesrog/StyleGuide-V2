@@ -92,13 +92,23 @@ interface StyleResult {
   styleTags: string[];
 }
 
+// Returns true only for colors with visible hue — not near-black, near-white, or gray
+function isChromatic(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const max = Math.max(r, g, b);
+  const saturation = max === 0 ? 0 : (max - Math.min(r, g, b)) / max;
+  return luminance > 0.18 && luminance < 0.87 && saturation > 0.12;
+}
+
 // Fallback pools used to pad results to minimum cardinality
 const FALLBACK_COLORS: ColorEntry[] = [
-  { name: "Warm White", hex: "#F5F1EC" },
-  { name: "Greige", hex: "#CAC1B5" },
-  { name: "Warm Sand", hex: "#D9C5A0" },
-  { name: "Soft Sage", hex: "#9BAF8E" },
-  { name: "Slate", hex: "#6B7280" },
+  { name: "Terracotta",  hex: "#C4784A" },
+  { name: "Sage",        hex: "#7D9B6A" },
+  { name: "Warm Rust",   hex: "#B5541B" },
+  { name: "Ocean",       hex: "#4A7C8B" },
 ];
 const FALLBACK_MATERIALS = ["Natural Wood", "Linen", "Cotton", "Stone", "Wool", "Ceramic"];
 const FALLBACK_STYLE_TAGS = ["Timeless", "Comfortable", "Inviting", "Layered", "Natural", "Considered", "Calm", "Personal", "Warm", "Effortless"];
@@ -117,7 +127,7 @@ function deriveStyleResult(tagCounts: Record<string, number>): StyleResult {
 
   for (const tag of sorted) {
     for (const c of COLOR_MAP[tag] ?? []) {
-      if (!seenColors.has(c.hex) && colorPalette.length < 5) {
+      if (!seenColors.has(c.hex) && colorPalette.length < 4 && isChromatic(c.hex)) {
         seenColors.add(c.hex);
         colorPalette.push(c);
       }
@@ -136,9 +146,9 @@ function deriveStyleResult(tagCounts: Record<string, number>): StyleResult {
     }
   }
 
-  // Enforce minimum cardinalities: 3 colors, 4 materials, 6 style tags
+  // Enforce minimum cardinalities: 4 colors, 4 materials, 6 style tags
   for (const c of FALLBACK_COLORS) {
-    if (colorPalette.length >= 3) break;
+    if (colorPalette.length >= 4) break;
     if (!seenColors.has(c.hex)) { seenColors.add(c.hex); colorPalette.push(c); }
   }
   for (const m of FALLBACK_MATERIALS) {

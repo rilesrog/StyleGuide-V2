@@ -4,7 +4,10 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
-import { supabaseAdmin, supabaseAnon } from "../lib/supabase";
+import { supabaseAdmin } from "../lib/supabase";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const router = Router();
 
@@ -137,7 +140,7 @@ router.get("/auth/callback", (_req, res) => {
 </html>`);
 });
 
-// POST /auth/magic-link — send a Supabase magic link email
+// POST /auth/magic-link — generate a Supabase magic link and send via Resend
 router.post("/auth/magic-link", async (req, res) => {
   const { email, redirectTo } = req.body as { email?: string; redirectTo?: string };
 
@@ -146,21 +149,49 @@ router.post("/auth/magic-link", async (req, res) => {
     return;
   }
 
-  const { error } = await supabaseAnon.auth.signInWithOtp({
+  const callbackUrl = redirectTo || `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback`;
+
+  // Generate the magic link via Supabase Admin (does NOT send email)
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: "magiclink",
     email: email.toLowerCase().trim(),
-    options: {
-      ...(redirectTo ? { emailRedirectTo: redirectTo } : {}),
-    },
+    options: { redirectTo: callbackUrl },
   });
 
-  if (error) {
-    console.error("Supabase magic link error:", error);
-    const isRateLimit = error.status === 429 || error.code === "over_email_send_rate_limit";
-    res.status(isRateLimit ? 429 : 500).json({
-      error: isRateLimit
-        ? "Too many emails sent. Please wait a minute and try again."
-        : "Failed to send magic link. Please try again.",
-    });
+  if (error || !data?.properties?.action_link) {
+    console.error("Supabase generateLink error:", error);
+    res.status(500).json({ error: "Failed to generate sign-in link. Please try again." });
+    return;
+  }
+
+  const magicLink = data.properties.action_link;
+
+  // Send via Resend
+  const { error: emailError } = await resend.emails.send({
+    from: "StyleSwipe <onboarding@resend.dev>",
+    to: email.toLowerCase().trim(),
+    subject: "Your StyleSwipe sign-in link",
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:40px 24px;">
+        <h1 style="font-size:28px;font-weight:700;color:#111;margin-bottom:8px;">StyleSwipe</h1>
+        <p style="color:#555;font-size:16px;line-height:24px;margin-bottom:32px;">
+          Tap the button below to sign in. This link expires in 1 hour.
+        </p>
+        <a href="${magicLink}"
+           style="display:inline-block;background:#111;color:#fff;text-decoration:none;
+                  padding:14px 28px;border-radius:10px;font-size:16px;font-weight:500;">
+          Sign in to StyleSwipe
+        </a>
+        <p style="color:#999;font-size:13px;margin-top:32px;">
+          If you didn't request this, you can safely ignore this email.
+        </p>
+      </div>
+    `,
+  });
+
+  if (emailError) {
+    console.error("Resend error:", emailError);
+    res.status(500).json({ error: "Failed to send email. Please try again." });
     return;
   }
 

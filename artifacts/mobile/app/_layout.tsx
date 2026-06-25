@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -34,44 +34,59 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+const SUPABASE_AUTH_TYPES = new Set(["magiclink", "signup", "recovery", "email"]);
+
+function parseSupabaseHash(raw: string): { accessToken: string | null; type: string | null } {
+  const hash = raw.includes("#") ? raw.split("#")[1] : raw;
+  const params = new URLSearchParams(hash);
+  return { accessToken: params.get("access_token"), type: params.get("type") };
+}
+
 // Handles Supabase magic link deep links — must be inside UserProvider
 function AuthCallbackHandler() {
   const url = Linking.useURL();
   const { login, isLoggedIn } = useUser();
   const handledRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (isLoggedIn || !url) return;
+  const attemptVerify = useCallback(
+    (rawUrl: string) => {
+      if (isLoggedIn) return;
+      const { accessToken, type } = parseSupabaseHash(rawUrl);
+      if (!accessToken) return;
+      if (type && !SUPABASE_AUTH_TYPES.has(type)) return;
+      if (handledRef.current.has(accessToken)) return;
+      handledRef.current.add(accessToken);
 
-    // Extract hash fragment (Supabase puts tokens there)
-    const hash = url.includes("#") ? url.split("#")[1] : "";
-    if (!hash) return;
-
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get("access_token");
-    const type = params.get("type");
-
-    if (!accessToken || type !== "magiclink") return;
-    if (handledRef.current.has(accessToken)) return;
-    handledRef.current.add(accessToken);
-
-    fetch(`${API_BASE}/api/auth/supabase-verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: accessToken }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.token) {
-          login(data.userId, data.name, data.email, data.token);
-          // Clear hash from URL on web so refresh doesn't re-trigger
-          if (typeof window !== "undefined") {
-            window.history.replaceState(null, "", window.location.pathname);
-          }
-        }
+      fetch(`${API_BASE}/api/auth/supabase-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: accessToken }),
       })
-      .catch(console.error);
-  }, [url, isLoggedIn]);
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.token) {
+            login(data.userId, data.name, data.email, data.token);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", window.location.pathname);
+            }
+          }
+        })
+        .catch(console.error);
+    },
+    [isLoggedIn, login]
+  );
+
+  // Handle URL from expo-linking (works for native deep links and web navigation)
+  useEffect(() => {
+    if (url) attemptVerify(url);
+  }, [url, attemptVerify]);
+
+  // Web fallback: read hash directly on mount in case useURL misses it
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash) attemptVerify(hash);
+  }, [attemptVerify]);
 
   return null;
 }

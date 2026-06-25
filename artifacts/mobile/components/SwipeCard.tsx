@@ -111,7 +111,7 @@ export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
 const styles = StyleSheet.create({
   card: {
     position: "absolute",
-    width: SCREEN_WIDTH - 32,
+    width: "100%",
     height: "100%",
     borderRadius: 24,
     overflow: "hidden",

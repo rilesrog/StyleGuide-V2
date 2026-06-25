@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { stylePhotosTable, swipesTable, styleProfilesTable, usersTable } from "@workspace/db/schema";
-import { eq, and, notInArray, sql } from "drizzle-orm";
+import { stylePhotosTable, swipesTable, styleProfilesTable, usersTable, sessionsTable } from "@workspace/db/schema";
+import { eq, and, notInArray, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -279,7 +279,7 @@ router.get("/style-photos", requireAuth, async (req, res) => {
 
 router.post("/swipes", requireAuth, async (req, res) => {
   const userId = req.userId!;
-  const { photoId, liked } = req.body as { photoId?: number; liked?: boolean };
+  const { photoId, liked, sessionId } = req.body as { photoId?: number; liked?: boolean; sessionId?: number };
 
   if (photoId === undefined || liked === undefined) {
     res.status(400).json({ error: "photoId and liked are required" });
@@ -288,7 +288,12 @@ router.post("/swipes", requireAuth, async (req, res) => {
 
   const [swipe] = await db
     .insert(swipesTable)
-    .values({ userId, photoId: Number(photoId), liked: Boolean(liked) })
+    .values({
+      userId,
+      photoId: Number(photoId),
+      liked: Boolean(liked),
+      ...(sessionId != null ? { sessionId: Number(sessionId) } : {}),
+    })
     .returning();
 
   await persistStyleProfile(userId);
@@ -412,20 +417,66 @@ router.post("/style-profile/complete", requireAuth, async (req, res) => {
 
 router.get("/style-board", requireAuth, async (req, res) => {
   const userId = req.userId!;
+  const sessionId = req.query.sessionId ? Number(req.query.sessionId) : null;
 
-  const photos = await db
-    .select({
-      id: stylePhotosTable.id,
-      url: stylePhotosTable.url,
-      tags: stylePhotosTable.tags,
-      source: stylePhotosTable.source,
-    })
+  const photoFields = {
+    id: stylePhotosTable.id,
+    url: stylePhotosTable.url,
+    tags: stylePhotosTable.tags,
+    source: stylePhotosTable.source,
+  };
+
+  // All photos this user has liked (any session)
+  const likedPhotos = await db
+    .select(photoFields)
     .from(swipesTable)
     .innerJoin(stylePhotosTable, eq(swipesTable.photoId, stylePhotosTable.id))
     .where(and(eq(swipesTable.userId, userId), eq(swipesTable.liked, true)))
     .orderBy(swipesTable.createdAt);
 
-  res.json({ photos });
+  // If no sessionId requested, return simple list (backward-compatible)
+  if (!sessionId) {
+    res.json({ photos: likedPhotos });
+    return;
+  }
+
+  // Verify session exists and caller is a member
+  const sessionRows = await db
+    .select()
+    .from(sessionsTable)
+    .where(eq(sessionsTable.id, sessionId));
+
+  if (!sessionRows.length) {
+    res.json({ photos: likedPhotos, pending: [], matched: [] });
+    return;
+  }
+
+  const session = sessionRows[0];
+  if (session.createdBy !== userId && session.partnerId !== userId) {
+    res.status(403).json({ error: "Not a member of this session" });
+    return;
+  }
+
+  // No partner yet — everything is just "liked", nothing pending or matched
+  if (!session.partnerId) {
+    res.json({ photos: likedPhotos, pending: likedPhotos, matched: [] });
+    return;
+  }
+
+  const partnerId = session.createdBy === userId ? session.partnerId : session.createdBy;
+
+  // Partner's liked photo IDs (any session)
+  const partnerLikes = await db
+    .select({ photoId: swipesTable.photoId })
+    .from(swipesTable)
+    .where(and(eq(swipesTable.userId, partnerId), eq(swipesTable.liked, true)));
+
+  const partnerLikedSet = new Set(partnerLikes.map((r) => r.photoId));
+
+  const matched = likedPhotos.filter((p) => partnerLikedSet.has(p.id));
+  const pending = likedPhotos.filter((p) => !partnerLikedSet.has(p.id));
+
+  res.json({ photos: likedPhotos, pending, matched });
 });
 
 async function persistStyleProfile(userId: number) {

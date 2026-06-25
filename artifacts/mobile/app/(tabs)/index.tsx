@@ -18,7 +18,13 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { SwipeCard, type SwipeCardRef } from "@/components/SwipeCard";
 import { useUser } from "@/context/UserContext";
+import { useMode } from "@/context/ModeContext";
+import { useSession } from "@/context/SessionContext";
 import { useQueryClient } from "@tanstack/react-query";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
 
 const BATCH_SIZE = 20;
 
@@ -31,7 +37,9 @@ interface Photo {
 export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { isLoggedIn } = useUser();
+  const { isLoggedIn, token } = useUser();
+  const { isRegistry } = useMode();
+  const { session, isActive } = useSession();
   const queryClient = useQueryClient();
 
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -92,7 +100,19 @@ export default function DiscoverScreen() {
       setPhotos((prev) => prev.slice(1));
 
       try {
-        await recordSwipe.mutateAsync({ data: { photoId: currentPhoto.id, liked } });
+        const useSessionId = isRegistry && isActive && session?.id;
+        if (useSessionId) {
+          await fetch(`${API_BASE}/api/swipes`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ photoId: currentPhoto.id, liked, sessionId: session!.id }),
+          });
+        } else {
+          await recordSwipe.mutateAsync({ data: { photoId: currentPhoto.id, liked } });
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/style-profile"] });
         queryClient.invalidateQueries({ queryKey: ["/api/style-board"] });
       } catch {
@@ -109,7 +129,7 @@ export default function DiscoverScreen() {
         setIsDonePhotos(true);
       }
     },
-    [photos, offset, totalAvailable, recordSwipe, queryClient]
+    [photos, offset, totalAvailable, recordSwipe, queryClient, isRegistry, isActive, session, token]
   );
 
   const s = stylesheet(colors);

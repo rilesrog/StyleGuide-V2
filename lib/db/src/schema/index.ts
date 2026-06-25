@@ -35,6 +35,7 @@ export const swipesTable = pgTable("swipes", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   photoId: integer("photo_id").notNull().references(() => stylePhotosTable.id),
   liked: boolean("liked").notNull(),
+  sessionId: integer("session_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

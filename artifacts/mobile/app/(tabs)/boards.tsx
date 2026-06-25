@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -19,11 +19,13 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
+import { useMode } from "@/context/ModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_SIZE = (SCREEN_WIDTH - 32 - 12) / 2;
 const THUMB_SIZE = (CARD_SIZE - 2) / 2;
+const PHOTO_THUMB = (SCREEN_WIDTH - 32 - 8) / 3;
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -37,12 +39,26 @@ type BoardSummary = {
   thumbnails: string[];
 };
 
+type StylePhoto = {
+  id: number;
+  url: string;
+  tags: string[];
+  source?: string;
+};
+
+type StyleBoardData = {
+  photos: StylePhoto[];
+  pending?: StylePhoto[];
+  matched?: StylePhoto[];
+};
+
 export default function BoardsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { token, isLoggedIn } = useUser();
   const { session, isActive } = useSession();
+  const { isRegistry } = useMode();
   const queryClient = useQueryClient();
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
 
@@ -51,6 +67,9 @@ export default function BoardsScreen() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const [styleBoard, setStyleBoard] = useState<StyleBoardData>({ photos: [] });
+  const [styleBoardLoading, setStyleBoardLoading] = useState(false);
 
   const fetchBoards = useCallback(async () => {
     if (!token) return;
@@ -70,10 +89,34 @@ export default function BoardsScreen() {
     }
   }, [token]);
 
+  const fetchStyleBoard = useCallback(async () => {
+    if (!token) return;
+    try {
+      setStyleBoardLoading(true);
+      const sessionParam = isRegistry && isActive && session?.id
+        ? `?sessionId=${session.id}`
+        : "";
+      const resp = await fetch(`${API_BASE}/api/style-board${sessionParam}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setStyleBoard(data as StyleBoardData);
+      }
+    } catch {
+      // silent
+    } finally {
+      setStyleBoardLoading(false);
+    }
+  }, [token, isRegistry, isActive, session?.id]);
+
   useFocusEffect(
     useCallback(() => {
-      if (isLoggedIn) fetchBoards();
-    }, [isLoggedIn, fetchBoards])
+      if (isLoggedIn) {
+        fetchBoards();
+        fetchStyleBoard();
+      }
+    }, [isLoggedIn, fetchBoards, fetchStyleBoard])
   );
 
   const handleCreateBoard = async () => {
@@ -105,6 +148,12 @@ export default function BoardsScreen() {
 
   const partnerName = session?.partner?.name ?? "Partner";
   const showPartnerBoard = isActive && session != null;
+  const isRegistryWithPartner = isRegistry && isActive && session?.partner != null;
+
+  const likedPhotos = styleBoard.photos ?? [];
+  const pendingPhotos = styleBoard.pending ?? [];
+  const matchedPhotos = styleBoard.matched ?? [];
+  const hasPhotos = likedPhotos.length > 0;
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
@@ -129,13 +178,97 @@ export default function BoardsScreen() {
           </Pressable>
         </View>
 
+        {/* ── Style inspiration photos ── */}
+        {styleBoardLoading && !hasPhotos ? null : hasPhotos ? (
+          <>
+            {isRegistryWithPartner ? (
+              <>
+                {/* Matched (Both Loved) section */}
+                {matchedPhotos.length > 0 && (
+                  <View style={s.photoSection}>
+                    <View style={s.sectionHeader}>
+                      <Ionicons name="heart" size={16} color={colors.primary} />
+                      <Text style={[s.sectionTitle, { color: colors.foreground }]}>
+                        Both Loved
+                      </Text>
+                      <View style={[s.pill, { backgroundColor: colors.primary }]}>
+                        <Text style={[s.pillText, { color: colors.primaryForeground }]}>
+                          {matchedPhotos.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[s.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      Photos you and {partnerName} both liked
+                    </Text>
+                    <PhotoGrid photos={matchedPhotos} thumbSize={PHOTO_THUMB} />
+                  </View>
+                )}
+
+                {/* Pending section */}
+                {pendingPhotos.length > 0 && (
+                  <View style={s.photoSection}>
+                    <View style={s.sectionHeader}>
+                      <Ionicons name="time-outline" size={16} color={colors.mutedForeground} />
+                      <Text style={[s.sectionTitle, { color: colors.foreground }]}>
+                        Waiting for {partnerName}
+                      </Text>
+                      <View style={[s.pill, { backgroundColor: colors.muted }]}>
+                        <Text style={[s.pillText, { color: colors.mutedForeground }]}>
+                          {pendingPhotos.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[s.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      Photos you liked — waiting for {partnerName} to decide
+                    </Text>
+                    <PhotoGrid photos={pendingPhotos} thumbSize={PHOTO_THUMB} dimmed />
+                  </View>
+                )}
+
+                {matchedPhotos.length === 0 && pendingPhotos.length === 0 && (
+                  <View style={[s.photoEmpty, { borderColor: colors.border }]}>
+                    <Ionicons name="heart-outline" size={32} color={colors.mutedForeground} />
+                    <Text style={[s.photoEmptyText, { color: colors.mutedForeground }]}>
+                      Swipe right on photos to start building your shared inspiration board with {partnerName}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              /* Decoration mode or no partner — simple Liked section */
+              <View style={s.photoSection}>
+                <View style={s.sectionHeader}>
+                  <Ionicons name="heart" size={16} color={colors.primary} />
+                  <Text style={[s.sectionTitle, { color: colors.foreground }]}>
+                    Liked Photos
+                  </Text>
+                  <View style={[s.pill, { backgroundColor: colors.primary }]}>
+                    <Text style={[s.pillText, { color: colors.primaryForeground }]}>
+                      {likedPhotos.length}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[s.sectionSubtitle, { color: colors.mutedForeground }]}>
+                  Your style inspiration
+                </Text>
+                <PhotoGrid photos={likedPhotos} thumbSize={PHOTO_THUMB} />
+              </View>
+            )}
+          </>
+        ) : null}
+
+        {/* ── Product boards ── */}
+        <View style={s.sectionHeader}>
+          <Ionicons name="albums-outline" size={16} color={colors.mutedForeground} />
+          <Text style={[s.sectionTitle, { color: colors.foreground }]}>My Boards</Text>
+        </View>
+
         {loading && boards.length === 0 ? (
           <View style={s.center}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
           <View style={s.grid}>
-            {/* Regular boards */}
             {boards.map((board) => (
               <BoardCard
                 key={board.id}
@@ -148,7 +281,6 @@ export default function BoardsScreen() {
               />
             ))}
 
-            {/* Virtual "With [Partner]" board — shown if active session */}
             {showPartnerBoard && (
               <BoardCard
                 name={`With ${partnerName}`}
@@ -219,6 +351,55 @@ export default function BoardsScreen() {
   );
 }
 
+function PhotoGrid({
+  photos,
+  thumbSize,
+  dimmed,
+}: {
+  photos: StylePhoto[];
+  thumbSize: number;
+  dimmed?: boolean;
+}) {
+  return (
+    <View style={photoGridStyles.grid}>
+      {photos.map((photo) => (
+        <View
+          key={photo.id}
+          style={[
+            photoGridStyles.thumbContainer,
+            { width: thumbSize, height: thumbSize },
+          ]}
+        >
+          <Image
+            source={{ uri: photo.url }}
+            style={[
+              photoGridStyles.thumb,
+              dimmed && { opacity: 0.55 },
+            ]}
+            resizeMode="cover"
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const photoGridStyles = StyleSheet.create({
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  thumbContainer: {
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  thumb: {
+    width: "100%",
+    height: "100%",
+  },
+});
+
 function BoardCard({
   name,
   itemCount,
@@ -244,7 +425,6 @@ function BoardCard({
       style={[styles.card, { backgroundColor: colors.card, width: CARD_SIZE }]}
       onPress={onPress}
     >
-      {/* 2×2 thumbnail collage */}
       <View style={styles.collage}>
         {filled.map((url, i) =>
           url ? (
@@ -278,7 +458,6 @@ function BoardCard({
         )}
       </View>
 
-      {/* Info */}
       <View style={styles.info}>
         <View style={styles.nameRow}>
           <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
@@ -347,6 +526,35 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
       borderRadius: 20,
     },
     fabText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    photoSection: { gap: 8 },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 4,
+    },
+    sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", flex: 1 },
+    sectionSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", paddingHorizontal: 4, marginTop: -4 },
+    pill: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    pillText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+    photoEmpty: {
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderRadius: 16,
+      padding: 32,
+      alignItems: "center",
+      gap: 10,
+    },
+    photoEmptyText: {
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      lineHeight: 19,
+    },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
     center: { paddingVertical: 80, alignItems: "center", justifyContent: "center" },
     empty: {

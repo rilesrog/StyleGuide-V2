@@ -2,13 +2,16 @@ import { useGetStyleProfile } from "@workspace/api-client-react";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,12 +21,74 @@ import { useUser } from "@/context/UserContext";
 import { useSession } from "@/context/SessionContext";
 import { useMode, type AppMode } from "@/context/ModeContext";
 
+const MATERIAL_IMAGES: Record<string, string> = {
+  marble: "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  velvet: "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  brass: "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  linen: "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  cotton: "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  stone: "https://images.pexels.com/photos/20536223/pexels-photo-20536223.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  rattan: "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
+  oak: "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
+  teak: "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
+  wood: "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
+  walnut: "https://images.pexels.com/photos/172296/pexels-photo-172296.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  ceramic: "https://images.pexels.com/photos/2162938/pexels-photo-2162938.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  concrete: "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  glass: "https://images.pexels.com/photos/3536520/pexels-photo-3536520.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  leather: "https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+  wool: "https://images.pexels.com/photos/3735218/pexels-photo-3735218.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
+};
+const FALLBACK_MATERIAL_IMG = "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400";
+
+function hexToRgb(hex: string) {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return { r, g, b };
+}
+
+function makeGradient(hex: string): [string, string, string] {
+  const { r, g, b } = hexToRgb(hex);
+  const lighter = `rgba(${Math.min(r + 60, 255)},${Math.min(g + 60, 255)},${Math.min(b + 60, 255)},1)`;
+  const base = `rgba(${r},${g},${b},1)`;
+  const darker = `rgba(${Math.max(r - 40, 0)},${Math.max(g - 40, 0)},${Math.max(b - 40, 0)},1)`;
+  return [lighter, base, darker];
+}
+
+function MaterialTile({ name, tileW, tileH }: { name: string; tileW: number; tileH: number }) {
+  const key = name.toLowerCase();
+  const uri = MATERIAL_IMAGES[key] ?? FALLBACK_MATERIAL_IMG;
+  const [errored, setErrored] = React.useState(false);
+  return (
+    <View style={{ width: tileW, height: tileH, borderRadius: 12, overflow: "hidden", backgroundColor: "#ccc" }}>
+      <Image
+        source={{ uri: errored ? FALLBACK_MATERIAL_IMG : uri }}
+        style={{ width: "100%", height: "100%" }}
+        resizeMode="cover"
+        onError={() => setErrored(true)}
+      />
+      <View style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        backgroundColor: "rgba(0,0,0,0.45)", paddingVertical: 5, paddingHorizontal: 8,
+      }}>
+        <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>{name}</Text>
+      </View>
+    </View>
+  );
+}
+
 type Segment = "you" | "style";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width: screenW } = useWindowDimensions();
   const router = useRouter();
+  // tile width: screen minus scroll padding (24×2) minus section padding (20×2) minus 2 gaps (8×2)
+  const tileW = Math.floor((screenW - 48 - 40 - 16) / 3);
+  const tileH = Math.floor(tileW * 0.92);
   const { name, email, isLoggedIn, logout } = useUser();
   const { session, isActive, startSession, leaveSession } = useSession();
   const { mode, setMode } = useMode();
@@ -258,12 +323,20 @@ export default function ProfileScreen() {
                     <>
                       <Text style={[s.subLabel, { color: colors.foreground }]}>Color Palette</Text>
                       <View style={s.paletteRow}>
-                        {colorPalette.map((c, i) => (
-                          <View key={i} style={s.paletteItem}>
-                            <View style={[s.swatch, { backgroundColor: c.hex, borderColor: colors.border }]} />
-                            <Text style={[s.swatchName, { color: colors.foreground }]} numberOfLines={2}>{c.name}</Text>
-                          </View>
-                        ))}
+                        {colorPalette.slice(0, 4).map((c, i) => {
+                          const gradient = makeGradient(c.hex);
+                          return (
+                            <View key={i} style={s.swatchItem}>
+                              <LinearGradient
+                                colors={gradient}
+                                start={{ x: 0.1, y: 0 }}
+                                end={{ x: 0.9, y: 1 }}
+                                style={s.swatchCircle}
+                              />
+                              <Text style={[s.swatchName, { color: colors.foreground }]} numberOfLines={2}>{c.name}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     </>
                   )}
@@ -271,11 +344,9 @@ export default function ProfileScreen() {
                   {materials.length > 0 && (
                     <>
                       <Text style={[s.subLabel, { color: colors.foreground }]}>Materials</Text>
-                      <View style={s.chips}>
-                        {materials.map((m: string, i: number) => (
-                          <View key={i} style={[s.chip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                            <Text style={[s.chipText, { color: colors.foreground }]}>{m}</Text>
-                          </View>
+                      <View style={s.materialGrid}>
+                        {materials.slice(0, 6).map((m: string, i: number) => (
+                          <MaterialTile key={i} name={m} tileW={tileW} tileH={tileH} />
                         ))}
                       </View>
                     </>
@@ -285,8 +356,8 @@ export default function ProfileScreen() {
                     <>
                       <Text style={[s.subLabel, { color: colors.foreground }]}>Aesthetic</Text>
                       <View style={s.chips}>
-                        {styleTags.map((t: string, i: number) => (
-                          <View key={i} style={[s.chip, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                        {styleTags.slice(0, 10).map((t: string, i: number) => (
+                          <View key={i} style={[s.chip, { backgroundColor: colors.primary + "16", borderColor: colors.primary + "38" }]}>
                             <Text style={[s.chipText, { color: colors.primary }]}>{t}</Text>
                           </View>
                         ))}
@@ -449,10 +520,11 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
       marginTop: 4,
     },
     goBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-    paletteRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    paletteItem: { alignItems: "center", gap: 4, minWidth: 52, maxWidth: 68 },
-    swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 1 },
+    paletteRow: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
+    swatchItem: { alignItems: "center", gap: 6, minWidth: 60, maxWidth: 76 },
+    swatchCircle: { width: 60, height: 60, borderRadius: 30 },
     swatchName: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
+    materialGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1 },
     chipText: { fontSize: 12, fontFamily: "Inter_500Medium" },

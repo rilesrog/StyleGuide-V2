@@ -18,7 +18,6 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { SwipeCard, type SwipeCardRef } from "@/components/SwipeCard";
 import { useUser } from "@/context/UserContext";
-import { useMode } from "@/context/ModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 
 const BATCH_SIZE = 20;
@@ -33,12 +32,10 @@ export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useUser();
-  const { mode } = useMode();
   const queryClient = useQueryClient();
 
   const topInset = insets.top + (Platform.OS === "web" ? 67 : 0);
   const TAB_BAR_HEIGHT = Platform.OS === "web" ? 64 : 49;
-  const pageTitle = mode === "registry" ? "Curate your dream registry" : "Design your dream space";
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [offset, setOffset] = useState(0);
@@ -122,10 +119,6 @@ export default function DiscoverScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { paddingTop: topInset + 8 }]}>
-        <Text style={[s.headerTitle, { color: colors.foreground }]}>{pageTitle}</Text>
-      </View>
-
       {photosLoading && photos.length === 0 ? (
         <View style={s.center}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -191,11 +184,6 @@ function stylesheet(colors: ReturnType<typeof import("@/hooks/useColors").useCol
   return StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 },
-    header: {
-      paddingHorizontal: 24,
-      paddingBottom: 6,
-    },
-    headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
     deckArea: {
       flex: 1,
       marginHorizontal: 16,

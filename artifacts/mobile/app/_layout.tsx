@@ -34,22 +34,12 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const SUPABASE_AUTH_TYPES = new Set(["magiclink", "signup", "recovery", "email"]);
-
-function parseSupabaseToken(raw: string): { accessToken: string | null; type: string | null } {
-  // Check hash fragment (#access_token=...)
-  const hash = raw.includes("#") ? raw.split("#")[1] : "";
-  const hashParams = new URLSearchParams(hash);
-  if (hashParams.get("access_token")) {
-    return { accessToken: hashParams.get("access_token"), type: hashParams.get("type") };
-  }
-  // Check query string (?access_token=...) — set by our API callback bridge page
-  const query = raw.includes("?") ? raw.split("?")[1].split("#")[0] : raw;
-  const queryParams = new URLSearchParams(query);
-  return { accessToken: queryParams.get("access_token"), type: queryParams.get("type") };
+function parseMagicToken(raw: string): string | null {
+  const query = raw.includes("?") ? raw.split("?")[1].split("#")[0] : "";
+  return new URLSearchParams(query).get("magic_token");
 }
 
-// Handles Supabase magic link deep links — must be inside UserProvider
+// Handles magic link deep links — must be inside UserProvider
 function AuthCallbackHandler() {
   const url = Linking.useURL();
   const { login, isLoggedIn } = useUser();
@@ -58,16 +48,15 @@ function AuthCallbackHandler() {
   const attemptVerify = useCallback(
     (rawUrl: string) => {
       if (isLoggedIn) return;
-      const { accessToken, type } = parseSupabaseToken(rawUrl);
-      if (!accessToken) return;
-      if (type && !SUPABASE_AUTH_TYPES.has(type)) return;
-      if (handledRef.current.has(accessToken)) return;
-      handledRef.current.add(accessToken);
+      const magicToken = parseMagicToken(rawUrl);
+      if (!magicToken) return;
+      if (handledRef.current.has(magicToken)) return;
+      handledRef.current.add(magicToken);
 
-      fetch(`${API_BASE}/api/auth/supabase-verify`, {
+      fetch(`${API_BASE}/api/auth/magic-verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: accessToken }),
+        body: JSON.stringify({ token: magicToken }),
       })
         .then((r) => r.json())
         .then((data) => {
@@ -83,16 +72,14 @@ function AuthCallbackHandler() {
     [isLoggedIn, login]
   );
 
-  // Handle URL from expo-linking (works for native deep links and web navigation)
   useEffect(() => {
     if (url) attemptVerify(url);
   }, [url, attemptVerify]);
 
-  // Web fallback: read hash/query directly on mount in case useURL misses it
+  // Web fallback: read query params on mount in case useURL hasn't fired yet
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const full = window.location.href;
-    if (window.location.search || window.location.hash) attemptVerify(full);
+    if (window.location.search) attemptVerify(window.location.href);
   }, [attemptVerify]);
 
   return null;

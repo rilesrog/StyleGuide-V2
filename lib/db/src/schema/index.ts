@@ -96,6 +96,18 @@ export const insertProductSwipeSchema = createInsertSchema(productSwipesTable).o
 export type InsertProductSwipe = z.infer<typeof insertProductSwipeSchema>;
 export type ProductSwipe = typeof productSwipesTable.$inferSelect;
 
+export const magicLinkTokensTable = pgTable("magic_link_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMagicLinkTokenSchema = createInsertSchema(magicLinkTokensTable).omit({ id: true, createdAt: true });
+export type MagicLinkToken = typeof magicLinkTokensTable.$inferSelect;
+
 export const roomAssignmentsTable = pgTable("room_assignments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),

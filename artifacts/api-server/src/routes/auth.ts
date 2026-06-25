@@ -1,10 +1,9 @@
 import { Router } from "express";
 import { randomBytes, pbkdf2Sync } from "crypto";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { usersTable, magicLinkTokensTable } from "@workspace/db/schema";
+import { eq, and, gt, isNull } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
-import { supabaseAdmin } from "../lib/supabase";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -20,8 +19,7 @@ function hashPassword(password: string, salt: string): string {
 }
 
 function verifyPassword(password: string, salt: string, storedHash: string): boolean {
-  const computed = hashPassword(password, salt);
-  return computed === storedHash;
+  return hashPassword(password, salt) === storedHash;
 }
 
 router.post("/auth/register", async (req, res) => {
@@ -31,18 +29,12 @@ router.post("/auth/register", async (req, res) => {
     res.status(400).json({ error: "Name, email and password are required" });
     return;
   }
-
   if (password.length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters" });
     return;
   }
 
-  const existing = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
-    .limit(1);
-
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
   if (existing.length) {
     res.status(409).json({ error: "Email already registered" });
     return;
@@ -52,16 +44,9 @@ router.post("/auth/register", async (req, res) => {
   const salt = generateSalt();
   const passwordHash = hashPassword(password, salt);
 
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      token,
-      passwordHash,
-      passwordSalt: salt,
-    })
-    .returning();
+  const [user] = await db.insert(usersTable).values({
+    name: name.trim(), email: email.toLowerCase().trim(), token, passwordHash, passwordSalt: salt,
+  }).returning();
 
   res.status(201).json({ userId: user.id, name: user.name, email: user.email, token: user.token });
 });
@@ -74,12 +59,7 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
-  const rows = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
-    .limit(1);
-
+  const rows = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
   if (!rows.length) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
@@ -98,12 +78,18 @@ router.post("/auth/login", async (req, res) => {
   res.json({ userId: user.id, name: user.name, email: user.email, token: user.token });
 });
 
-// GET /auth/callback — Supabase redirects here after magic link click.
-// Reads the access_token from the URL hash (client-side) and forwards to the Expo app.
-router.get("/auth/callback", (_req, res) => {
+// GET /auth/callback — bounce page served from API, reads ?token= and redirects into the Expo app
+router.get("/auth/callback", (req, res) => {
   const expoWebUrl = process.env.REPLIT_EXPO_DEV_DOMAIN
     ? `https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`
     : "";
+
+  const tokenParam = req.query.token as string | undefined;
+
+  if (tokenParam && expoWebUrl) {
+    res.redirect(`${expoWebUrl}/?magic_token=${encodeURIComponent(tokenParam)}`);
+    return;
+  }
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html>
@@ -119,57 +105,38 @@ router.get("/auth/callback", (_req, res) => {
   </style>
 </head>
 <body>
-  <p>Signing you in&hellip;</p>
-  <script>
-    var hash = window.location.hash.slice(1);
-    var params = new URLSearchParams(hash);
-    var token = params.get('access_token');
-    var type  = params.get('type') || 'magiclink';
-    if (token && ${JSON.stringify(expoWebUrl)}) {
-      window.location.replace(
-        ${JSON.stringify(expoWebUrl)} +
-        '/?access_token=' + encodeURIComponent(token) +
-        '&type=' + encodeURIComponent(type)
-      );
-    } else {
-      document.querySelector('p').textContent =
-        'Sign-in failed — no token received. Please try again.';
-    }
-  </script>
+  <p>Sign-in link is missing or expired. Please request a new one.</p>
 </body>
 </html>`);
 });
 
-// POST /auth/magic-link — generate a Supabase magic link and send via Resend
+// POST /auth/magic-link — generate our own token and send via Resend
 router.post("/auth/magic-link", async (req, res) => {
-  const { email, redirectTo } = req.body as { email?: string; redirectTo?: string };
+  const { email } = req.body as { email?: string };
 
   if (!email?.trim()) {
     res.status(400).json({ error: "Email is required" });
     return;
   }
 
-  const callbackUrl = redirectTo || `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback`;
+  const normalEmail = email.toLowerCase().trim();
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-  // Generate the magic link via Supabase Admin (does NOT send email)
-  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: "magiclink",
-    email: email.toLowerCase().trim(),
-    options: { redirectTo: callbackUrl },
-  });
+  await db.insert(magicLinkTokensTable).values({ email: normalEmail, token, expiresAt });
 
-  if (error || !data?.properties?.action_link) {
-    console.error("Supabase generateLink error:", error);
-    res.status(500).json({ error: "Failed to generate sign-in link. Please try again." });
-    return;
-  }
+  const apiBase = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : "";
+  const magicLink = `${apiBase}/api/auth/callback?token=${token}`;
 
-  const magicLink = data.properties.action_link;
+  // On Resend free tier (no verified domain), emails can only go to the account owner.
+  // Set RESEND_TO_OVERRIDE=your@email.com to test; remove once a domain is verified.
+  const toAddress = process.env.RESEND_TO_OVERRIDE || normalEmail;
 
-  // Send via Resend
   const { error: emailError } = await resend.emails.send({
     from: "StyleSwipe <onboarding@resend.dev>",
-    to: email.toLowerCase().trim(),
+    to: toAddress,
     subject: "Your StyleSwipe sign-in link",
     html: `
       <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:40px 24px;">
@@ -198,67 +165,62 @@ router.post("/auth/magic-link", async (req, res) => {
   res.json({ success: true });
 });
 
-// POST /auth/supabase-verify — verify Supabase access_token and return our session token
-router.post("/auth/supabase-verify", async (req, res) => {
-  const { access_token } = req.body as { access_token?: string };
+// POST /auth/magic-verify — exchange our magic token for an app session
+router.post("/auth/magic-verify", async (req, res) => {
+  const { token } = req.body as { token?: string };
 
-  if (!access_token) {
-    res.status(400).json({ error: "access_token is required" });
+  if (!token) {
+    res.status(400).json({ error: "token is required" });
     return;
   }
 
-  const { data: { user: supaUser }, error } = await supabaseAdmin.auth.getUser(access_token);
-
-  if (error || !supaUser?.email) {
-    res.status(401).json({ error: "Invalid or expired token" });
-    return;
-  }
-
-  const email = supaUser.email.toLowerCase();
-  const supabaseId = supaUser.id;
-
-  const existing = await db
+  const rows = await db
     .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
+    .from(magicLinkTokensTable)
+    .where(
+      and(
+        eq(magicLinkTokensTable.token, token),
+        gt(magicLinkTokensTable.expiresAt, new Date()),
+        isNull(magicLinkTokensTable.usedAt)
+      )
+    )
     .limit(1);
+
+  if (!rows.length) {
+    res.status(401).json({ error: "This link has expired or already been used." });
+    return;
+  }
+
+  const magicRow = rows[0];
+  await db.update(magicLinkTokensTable).set({ usedAt: new Date() }).where(eq(magicLinkTokensTable.id, magicRow.id));
+
+  const email = magicRow.email;
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
   if (existing.length) {
     const user = existing[0];
-    if (!user.supabaseId) {
-      await db.update(usersTable).set({ supabaseId }).where(eq(usersTable.id, user.id));
-    }
     res.json({ userId: user.id, name: user.name, email: user.email, token: user.token });
     return;
   }
 
-  const token = randomBytes(32).toString("hex");
+  const sessionToken = randomBytes(32).toString("hex");
   const name = email.split("@")[0];
-
-  const [newUser] = await db
-    .insert(usersTable)
-    .values({ name, email, token, supabaseId })
-    .returning();
+  const [newUser] = await db.insert(usersTable).values({ name, email, token: sessionToken }).returning();
 
   res.status(201).json({ userId: newUser.id, name: newUser.name, email: newUser.email, token: newUser.token });
 });
 
-// GET /users/me — return current user info including mode
+// GET /users/me
 router.get("/users/me", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const rows = await db
     .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, mode: usersTable.mode })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-  if (!rows.length) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!rows.length) { res.status(404).json({ error: "User not found" }); return; }
   res.json(rows[0]);
 });
 
-// PATCH /users/me/mode — update current user's active mode
+// PATCH /users/me/mode
 router.patch("/users/me/mode", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const { mode } = req.body as { mode?: string };

@@ -36,12 +36,10 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      const redirectTo = `${API_BASE}/api/auth/callback`;
-
       const res = await fetch(`${API_BASE}/api/auth/magic-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), redirectTo }),
+        body: JSON.stringify({ email: email.trim() }),
       });
 
       if (!res.ok) {

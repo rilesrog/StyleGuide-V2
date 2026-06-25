@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Svg, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -74,6 +75,90 @@ function MaterialTile({ name, tileW, tileH }: { name: string; tileW: number; til
         backgroundColor: "rgba(0,0,0,0.45)", paddingVertical: 5, paddingHorizontal: 8,
       }}>
         <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>{name}</Text>
+      </View>
+    </View>
+  );
+}
+
+const SLICE_SHADES = ["#111111", "#2e2e2e", "#4b4b4b", "#686868", "#858585", "#a2a2a2", "#bfbfbf", "#d6d6d6"];
+
+function polarToCart(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function donutSlicePath(
+  cx: number, cy: number,
+  outerR: number, innerR: number,
+  startDeg: number, endDeg: number,
+) {
+  const o1 = polarToCart(cx, cy, outerR, startDeg);
+  const o2 = polarToCart(cx, cy, outerR, endDeg);
+  const i1 = polarToCart(cx, cy, innerR, endDeg);
+  const i2 = polarToCart(cx, cy, innerR, startDeg);
+  const large = endDeg - startDeg > 180 ? 1 : 0;
+  return [
+    `M ${o1.x.toFixed(3)} ${o1.y.toFixed(3)}`,
+    `A ${outerR} ${outerR} 0 ${large} 1 ${o2.x.toFixed(3)} ${o2.y.toFixed(3)}`,
+    `L ${i1.x.toFixed(3)} ${i1.y.toFixed(3)}`,
+    `A ${innerR} ${innerR} 0 ${large} 0 ${i2.x.toFixed(3)} ${i2.y.toFixed(3)}`,
+    "Z",
+  ].join(" ");
+}
+
+function StyleDnaPie({
+  tagWeights,
+  foreground,
+  muted,
+}: {
+  tagWeights: Array<{ tag: string; score: number }>;
+  foreground: string;
+  muted: string;
+}) {
+  const top = tagWeights.slice(0, 8);
+  const total = top.reduce((s, t) => s + t.score, 0) || 1;
+  const SIZE = 180;
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const outerR = 76;
+  const innerR = 48;
+  const GAP_DEG = 1.5;
+
+  let cursor = 0;
+  const slices = top.map((t, i) => {
+    const pct = t.score / total;
+    const span = pct * 360;
+    const startDeg = cursor + GAP_DEG / 2;
+    const endDeg = cursor + span - GAP_DEG / 2;
+    cursor += span;
+    return { ...t, pct, startDeg, endDeg, color: SLICE_SHADES[i] ?? "#ddd" };
+  });
+
+  return (
+    <View style={{ gap: 16 }}>
+      <View style={{ alignItems: "center" }}>
+        <Svg width={SIZE} height={SIZE}>
+          {slices.map((sl, i) => (
+            <Path
+              key={i}
+              d={donutSlicePath(cx, cy, outerR, innerR, sl.startDeg, sl.endDeg)}
+              fill={sl.color}
+            />
+          ))}
+        </Svg>
+      </View>
+      <View style={{ gap: 8 }}>
+        {slices.map((sl, i) => (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: sl.color }} />
+            <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: foreground, textTransform: "capitalize" }}>
+              {sl.tag}
+            </Text>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: muted }}>
+              {Math.round(sl.pct * 100)}%
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -371,18 +456,11 @@ export default function ProfileScreen() {
               {tagWeights.length > 0 && (
                 <View style={[s.section, { backgroundColor: colors.card }]}>
                   <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>Style DNA</Text>
-                  {tagWeights.slice(0, 8).map((tw, i) => (
-                    <View key={tw.tag} style={s.tagRow}>
-                      <View style={s.tagRank}>
-                        <Text style={[s.rankNum, { color: i < 3 ? colors.primary : colors.mutedForeground }]}>#{i + 1}</Text>
-                      </View>
-                      <Text style={[s.tagName, { color: colors.foreground }]}>{tw.tag}</Text>
-                      <View style={[s.barTrack, { backgroundColor: colors.border }]}>
-                        <View style={[s.barFill, { backgroundColor: colors.primary, width: `${Math.round(tw.score * 100)}%` }]} />
-                      </View>
-                      <Text style={[s.tagScore, { color: colors.mutedForeground }]}>{Math.round(tw.score * 100)}%</Text>
-                    </View>
-                  ))}
+                  <StyleDnaPie
+                    tagWeights={tagWeights}
+                    foreground={colors.foreground}
+                    muted={colors.mutedForeground}
+                  />
                 </View>
               )}
             </>

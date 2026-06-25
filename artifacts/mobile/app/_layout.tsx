@@ -36,10 +36,17 @@ const queryClient = new QueryClient();
 
 const SUPABASE_AUTH_TYPES = new Set(["magiclink", "signup", "recovery", "email"]);
 
-function parseSupabaseHash(raw: string): { accessToken: string | null; type: string | null } {
-  const hash = raw.includes("#") ? raw.split("#")[1] : raw;
-  const params = new URLSearchParams(hash);
-  return { accessToken: params.get("access_token"), type: params.get("type") };
+function parseSupabaseToken(raw: string): { accessToken: string | null; type: string | null } {
+  // Check hash fragment (#access_token=...)
+  const hash = raw.includes("#") ? raw.split("#")[1] : "";
+  const hashParams = new URLSearchParams(hash);
+  if (hashParams.get("access_token")) {
+    return { accessToken: hashParams.get("access_token"), type: hashParams.get("type") };
+  }
+  // Check query string (?access_token=...) — set by our API callback bridge page
+  const query = raw.includes("?") ? raw.split("?")[1].split("#")[0] : raw;
+  const queryParams = new URLSearchParams(query);
+  return { accessToken: queryParams.get("access_token"), type: queryParams.get("type") };
 }
 
 // Handles Supabase magic link deep links — must be inside UserProvider
@@ -51,7 +58,7 @@ function AuthCallbackHandler() {
   const attemptVerify = useCallback(
     (rawUrl: string) => {
       if (isLoggedIn) return;
-      const { accessToken, type } = parseSupabaseHash(rawUrl);
+      const { accessToken, type } = parseSupabaseToken(rawUrl);
       if (!accessToken) return;
       if (type && !SUPABASE_AUTH_TYPES.has(type)) return;
       if (handledRef.current.has(accessToken)) return;
@@ -81,11 +88,11 @@ function AuthCallbackHandler() {
     if (url) attemptVerify(url);
   }, [url, attemptVerify]);
 
-  // Web fallback: read hash directly on mount in case useURL misses it
+  // Web fallback: read hash/query directly on mount in case useURL misses it
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const hash = window.location.hash;
-    if (hash) attemptVerify(hash);
+    const full = window.location.href;
+    if (window.location.search || window.location.hash) attemptVerify(full);
   }, [attemptVerify]);
 
   return null;

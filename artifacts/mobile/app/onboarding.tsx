@@ -36,10 +36,7 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      const redirectTo =
-        typeof window !== "undefined"
-          ? window.location.origin
-          : `mobile:///`;
+      const redirectTo = `${API_BASE}/api/auth/callback`;
 
       const res = await fetch(`${API_BASE}/api/auth/magic-link`, {
         method: "POST",

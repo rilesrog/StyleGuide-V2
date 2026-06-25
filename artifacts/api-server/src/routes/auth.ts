@@ -95,6 +95,48 @@ router.post("/auth/login", async (req, res) => {
   res.json({ userId: user.id, name: user.name, email: user.email, token: user.token });
 });
 
+// GET /auth/callback — Supabase redirects here after magic link click.
+// Reads the access_token from the URL hash (client-side) and forwards to the Expo app.
+router.get("/auth/callback", (_req, res) => {
+  const expoWebUrl = process.env.REPLIT_EXPO_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`
+    : "";
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Signing in to StyleSwipe...</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column;
+           align-items: center; justify-content: center; height: 100vh; margin: 0;
+           background: #fff; gap: 12px; }
+    p { color: #555; font-size: 16px; margin: 0; }
+  </style>
+</head>
+<body>
+  <p>Signing you in&hellip;</p>
+  <script>
+    var hash = window.location.hash.slice(1);
+    var params = new URLSearchParams(hash);
+    var token = params.get('access_token');
+    var type  = params.get('type') || 'magiclink';
+    if (token && ${JSON.stringify(expoWebUrl)}) {
+      window.location.replace(
+        ${JSON.stringify(expoWebUrl)} +
+        '/?access_token=' + encodeURIComponent(token) +
+        '&type=' + encodeURIComponent(type)
+      );
+    } else {
+      document.querySelector('p').textContent =
+        'Sign-in failed — no token received. Please try again.';
+    }
+  </script>
+</body>
+</html>`);
+});
+
 // POST /auth/magic-link — send a Supabase magic link email
 router.post("/auth/magic-link", async (req, res) => {
   const { email, redirectTo } = req.body as { email?: string; redirectTo?: string };

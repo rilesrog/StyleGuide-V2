@@ -19,51 +19,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { MATERIAL_IMAGES, FALLBACK_MATERIAL_IMG } from "@/constants/materialImages";
 import { useSession } from "@/context/SessionContext";
 import { useMode, type AppMode } from "@/context/ModeContext";
-
-const MATERIAL_IMAGES: Record<string, string> = {
-  marble:            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  velvet:            "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  brass:             "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  linen:             "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  cotton:            "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  stone:             "https://images.pexels.com/photos/20536223/pexels-photo-20536223.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  rattan:            "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  sisal:             "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "woven textiles":  "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "macramé":         "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  oak:               "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  teak:              "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  wood:              "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  birch:             "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "natural wood":    "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "lacquered wood":  "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "unfinished wood": "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  walnut:            "https://images.pexels.com/photos/172296/pexels-photo-172296.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "reclaimed wood":  "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  shiplap:           "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  "exposed brick":   "https://img.magnific.com/premium-photo/peeling-plaster-exposed-brick-wall-texture_544662-10011.jpg?w=400&q=80",
-  ceramic:           "https://images.pexels.com/photos/2162938/pexels-photo-2162938.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  bamboo:            "https://images.pexels.com/photos/2162938/pexels-photo-2162938.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "terracotta tile": "https://images.pexels.com/photos/2162938/pexels-photo-2162938.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  concrete:          "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "polished concrete":"https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "natural stone":   "https://images.pexels.com/photos/20536223/pexels-photo-20536223.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  glass:             "https://images.pexels.com/photos/3536520/pexels-photo-3536520.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  crystal:           "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  corian:            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  leather:           "https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "rich fabrics":    "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "mixed metals":    "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  steel:             "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "raw steel":       "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "molded plastic":  "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  wool:              "https://images.pexels.com/photos/3735218/pexels-photo-3735218.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  sherpa:            "https://images.pexels.com/photos/3735218/pexels-photo-3735218.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "bouclé":          "https://images.pexels.com/photos/3735218/pexels-photo-3735218.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-};
-const FALLBACK_MATERIAL_IMG = "https://images.pexels.com/photos/1029604/pexels-photo-1029604.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400";
 
 function hexToRgb(hex: string) {
   const clean = hex.replace("#", "");
@@ -82,8 +40,7 @@ function makeGradient(hex: string): [string, string, string] {
 }
 
 function MaterialTile({ name, tileW, tileH }: { name: string; tileW: number; tileH: number }) {
-  const key = name.toLowerCase();
-  const uri = MATERIAL_IMAGES[key] ?? FALLBACK_MATERIAL_IMG;
+  const uri = MATERIAL_IMAGES[name] ?? FALLBACK_MATERIAL_IMG;
   const [errored, setErrored] = React.useState(false);
   return (
     <View style={{ width: tileW, height: tileH, borderRadius: 12, overflow: "hidden", backgroundColor: "#ccc" }}>

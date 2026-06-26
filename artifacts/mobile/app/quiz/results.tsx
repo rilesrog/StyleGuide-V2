@@ -15,6 +15,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
+import { MATERIAL_IMAGES, FALLBACK_MATERIAL_IMG } from "@/constants/materialImages";
 
 interface ColorEntry {
   name: string;
@@ -26,48 +27,6 @@ interface StyleResult {
   materials: string[];
   styleTags: string[];
 }
-
-const MATERIAL_IMAGES: Record<string, string> = {
-  "Marble":            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Velvet":            "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Brass":             "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Mixed Metals":      "https://images.pexels.com/photos/3467946/pexels-photo-3467946.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Leather":           "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Polished Concrete": "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Rattan":            "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "Sisal":             "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "Woven Textiles":    "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "Macramé":           "https://i.pinimg.com/originals/5a/ec/30/5aec30db18cef864ce24386f96fee596.jpg",
-  "Linen":             "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Cotton":            "https://images.pexels.com/photos/1487713/pexels-photo-1487713.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Natural Stone":     "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Stone":             "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Wool":              "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
-  "Sherpa":            "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
-  "Bouclé":            "https://static.vecteezy.com/system/resources/thumbnails/055/426/675/small/close-up-of-beige-wool-knit-texture-in-rows-for-warm-winter-clothing-concept-photo.jpeg",
-  "Rich Fabrics":      "https://images.pexels.com/photos/6044191/pexels-photo-6044191.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Oak":               "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Teak":              "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Natural Wood":      "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Lacquered Wood":    "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Birch":             "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Unfinished Wood":   "https://www.sketchuptextureclub.com/public/texture/111-teak-wood-fine-medium-color-texture-seamless.jpg",
-  "Reclaimed Wood":    "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  "Shiplap":           "https://reclaimedlumberproducts.com/cdn/shop/files/reclaimed-wood-wall-aged-paneling-planks-antique-bandsawn-texture-419_8426da10-dea1-454e-a631-5fec177c0c08_800x.jpg?v=1715792038",
-  "Exposed Brick":     "https://img.magnific.com/premium-photo/peeling-plaster-exposed-brick-wall-texture_544662-10011.jpg?w=400&q=80",
-  "Raw Steel":         "https://static.vecteezy.com/system/resources/thumbnails/059/357/123/small/a-grey-concrete-wall-with-a-weathered-texture-creates-a-raw-industrial-and-versatile-background-photo.jpg",
-  "Steel":             "https://static.vecteezy.com/system/resources/thumbnails/059/357/123/small/a-grey-concrete-wall-with-a-weathered-texture-creates-a-raw-industrial-and-versatile-background-photo.jpg",
-  "Crystal":           "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Corian":            "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Glass":             "https://images.pexels.com/photos/4709486/pexels-photo-4709486.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Ceramic":           "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Bamboo":            "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Terracotta Tile":   "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-  "Molded Plastic":    "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400",
-};
-
-const FALLBACK_MATERIAL_IMG =
-  "https://images.pexels.com/photos/20536223/pexels-photo-20536223/free-photo-of-textured-stone-surface-with-natural-patterns.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=400";
 
 function hexToRgb(hex: string) {
   const h = hex.replace("#", "");
